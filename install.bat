@@ -37,6 +37,7 @@ if exist "%CHECK_FILE%" (
     :: Remove trailing backslash if present
     set "SCRIPT_DIR=%SCRIPT_DIR:~0,-1%"
     copy "%EXTRACT_FOLDER%\spectraProcessing.py" "%SCRIPT_DIR%"
+    copy "%EXTRACT_FOLDER%\fluorophor_data.txt" "%SCRIPT_DIR%"
 
     del "%EXTRACT_FOLDER%"
 )
