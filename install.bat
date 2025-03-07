@@ -100,7 +100,7 @@ copy "fluorophor_data.txt" "%USERPROFILE%\Documents\Spectra Processing\Executabl
 copy "icon.ico" "%USERPROFILE%\Documents\Spectra Processing\Executable"
 
 echo Creating executable using PyInstaller...
-"%python%" -m PyInstaller --distpath "%USERPROFILE%\Documents\Spectra Processing\Executable" --noconsole --icon="icon.ico" --onefile "%pythonfile%"
+"%python%" -m PyInstaller --distpath "%USERPROFILE%\Documents\Spectra Processing\Executable" --noconsole --icon="icon.ico" --onefile "spectraProcessing.py"
 if %errorlevel% == 1 (
     echo Failed to create executable.
     echo Exiting script.

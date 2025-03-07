@@ -1,8 +1,6 @@
 #!/bin/bash
 set -e  # Exit on error
 
-puthonfile="spectraprocessing.py"
-
 # Get the user's home directory
 HOME_DIR="$HOME"
 
@@ -30,9 +28,9 @@ if [ -f "$CHECK_FILE" ]; then
 
     # Remove the ZIP file after extraction
     rm "$ZIP_FILE"
-
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     echo "Repository downloaded and extracted to: $EXTRACT_FOLDER"
-    puthonfile="$EXTRACT_FOLDER/spectraprocessing.py"
+    cp "$EXTRACT_FOLDER/spectraprocessing.py" "$SCRIPT_DIR"
 
 fi
 
@@ -70,7 +68,7 @@ cp icon.ico "$BASE_DIR"
 
 # Create executable using PyInstaller
 echo "Creating executable..."
-$python -m PyInstaller --distpath "$BASE_DIR" --noconfirm --noconsole --icon="$BASE_DIR/icon.ico" --onefile spectraProcessing.py
+$python -m PyInstaller --distpath "$BASE_DIR" --noconfirm --noconsole --icon="$BASE_DIR/icon.ico" --onefile "spectraProcessing.py"
 
 # Handle macOS specific installation
 if [[ "$(uname)" == "Darwin" ]]; then
