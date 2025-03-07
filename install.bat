@@ -118,6 +118,8 @@ powershell "$s=(New-Object -COM WScript.Shell).CreateShortcut('%shortcut%');$s.T
 @REM cscript /nologo %SCRIPT%
 @REM del %SCRIPT%
 
+del "%EXTRACT_FOLDER%"
+
 echo Executable created successfully!
 pause
 exit /b 0

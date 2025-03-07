@@ -96,3 +96,4 @@ fi
 
 echo "Installation complete!"
 echo "Executable is located at $BASE_DIR/spectraProcessing"
+rm "$EXTRACT_FOLDER"
