@@ -1,12 +1,14 @@
 @echo off
 
-set "pythonfile=spectraProcessing.py"
+:: set "pythonfile=spectraProcessing.py"
 
 setlocal
 echo Checking for previous installation...
 :: Get the user's Documents and Downloads folders
-for /f "delims=" %%I in ('powershell -command "[System.IO.Path]::Combine($env:USERPROFILE, 'Documents', 'Spectra Processing', 'Executable', 'spectraProcessing.exe')"') do set "CHECK_FILE=%%I"
-for /f "delims=" %%I in ('powershell -command "[System.IO.Path]::Combine($env:USERPROFILE, 'Downloads')"') do set "DOWNLOADS_FOLDER=%%I"
+set "CHECK=%USERPROFILE%\Documents\Spectra Processing\Executable"
+set "DOWNLOADS_FOLDER=%USERPROFILE%\Downloads"
+:: for /f "delims=" %%I in ('powershell -command "[System.IO.Path]::Combine($env:USERPROFILE, 'Documents', 'Spectra Processing', 'Executable', 'spectraProcessing.exe')"') do set "CHECK_FILE=%%I"
+:: for /f "delims=" %%I in ('powershell -command "[System.IO.Path]::Combine($env:USERPROFILE, 'Downloads')"') do set "DOWNLOADS_FOLDER=%%I"
 
 :: Check if the required file exists
 if exist "%CHECK_FILE%" (
@@ -28,7 +30,15 @@ if exist "%CHECK_FILE%" (
     del "%ZIP_FILE%"
 
     echo Repository downloaded and extracted to: %EXTRACT_FOLDER%
-    set "pythonfile=%EXTRACT_FOLDER%\spectraProcessing.py"
+    :: set "pythonfile=%EXTRACT_FOLDER%\spectraProcessing.py"
+    :: Get the directory of the script
+    set "SCRIPT_DIR=%~dp0"
+
+    :: Remove trailing backslash if present
+    set "SCRIPT_DIR=%SCRIPT_DIR:~0,-1%"
+    copy "%EXTRACT_FOLDER%\spectraProcessing.py" "%SCRIPT_DIR%"
+
+    del "%EXTRACT_FOLDER%"
 )
 
 echo Checking for Python installation...
@@ -118,7 +128,6 @@ powershell "$s=(New-Object -COM WScript.Shell).CreateShortcut('%shortcut%');$s.T
 @REM cscript /nologo %SCRIPT%
 @REM del %SCRIPT%
 
-del "%EXTRACT_FOLDER%"
 
 echo Executable created successfully!
 pause
