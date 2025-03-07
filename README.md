@@ -12,3 +12,6 @@ enjoy!
 # Installing updates:
 just run the install.bat(.sh) script depending on the OS you are running. 
 all the updates will be downloaded automatically from the remote location and will  be installed leaving all the data that you already have from previous versions untouched.
+
+# Special Notes:
+if  you are using a macOS or any Linux and encounter error in the installation process please install python 3.11.9 on your machine and delete any older python version
