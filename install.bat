@@ -28,7 +28,7 @@ if exist "%CHECK_FILE%" (
     del "%ZIP_FILE%"
 
     echo Repository downloaded and extracted to: %EXTRACT_FOLDER%
-    
+    set "pythonfile=%EXTRACT_FOLDER%\spectraProcessing.py"
 )
 
 echo Checking for Python installation...

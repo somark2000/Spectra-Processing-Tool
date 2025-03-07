@@ -1,6 +1,41 @@
 #!/bin/bash
-
 set -e  # Exit on error
+
+puthonfile="spectraprocessing.py"
+
+# Get the user's home directory
+HOME_DIR="$HOME"
+
+# Define the file to check for existence
+CHECK_FILE="$HOME_DIR/Documents/Spectra Processing/Executable/spectraProcessing.exe"
+
+# Define the repository URL and destination folder
+REPO_URL="https://github.com/somark2000/Spectra-Processing-Tool/archive/refs/heads/main.zip"
+DOWNLOADS_FOLDER="$HOME_DIR/Downloads"
+ZIP_FILE="$DOWNLOADS_FOLDER/Spectra-Processing-Tool.zip"
+EXTRACT_FOLDER="$DOWNLOADS_FOLDER/Spectra-Processing-Tool"
+
+# Check if the required file exists
+if [ -f "$CHECK_FILE" ]; then
+    # Download the repository ZIP file
+    echo "Downloading repository..."
+    curl -L -o "$ZIP_FILE" "$REPO_URL"
+
+    # Create the extraction folder if it doesn't exist
+    mkdir -p "$EXTRACT_FOLDER"
+
+    # Extract the ZIP file
+    echo "Extracting repository..."
+    unzip -o "$ZIP_FILE" -d "$EXTRACT_FOLDER"
+
+    # Remove the ZIP file after extraction
+    rm "$ZIP_FILE"
+
+    echo "Repository downloaded and extracted to: $EXTRACT_FOLDER"
+    puthonfile="$EXTRACT_FOLDER/spectraprocessing.py"
+
+fi
+
 
 # Check if Python is installed
 echo "Checking for Python installation..."
