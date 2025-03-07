@@ -184,12 +184,12 @@ def process_files(solution,input_files,autofluorescence_files,min_spectra, max_s
     grouped_files = defaultdict(list)
     grouped_files_baseline = defaultdict(list)
     for file_path in file_paths:
-        basename = "".join(file_path.split('/')[-1]).rsplit('_')[0] # Extract basename (e.g., 'a', 'b')
+        basename = "".join(file_path.split('/')[-1]).split('.')[0] # Extract basename (e.g., 'a', 'b')
         grouped_files[basename].append(file_path)
     print(grouped_files)
         
     for file_path in file_paths_af:
-        basename = "".join(file_path.split('/')[-1]).rsplit('_')[0] # Extract basename (e.g., 'a', 'b')
+        basename = "".join(file_path.split('/')[-1]).split('.')[0] # Extract basename (e.g., 'a', 'b')
         grouped_files_baseline[basename].append(file_path)
     grouped_files_baseline.pop('', None)
 
@@ -205,7 +205,8 @@ def process_files(solution,input_files,autofluorescence_files,min_spectra, max_s
         skip_lines = 8
         delimiter = ';'
         skip_footer = 0
-        if solution == "SERS": skip_lines = 1
+        if solution == "SERS_BWTeK": skip_lines = 1
+        elif solution == "SERS_Avantes": skip_lines = 0
         elif solution == "FT-IR": 
             skip_lines = 19
             delimiter = '	'
@@ -225,6 +226,7 @@ def process_files(solution,input_files,autofluorescence_files,min_spectra, max_s
         # Convert the list of lists to a NumPy array
         array = np.array(samples)
         arrayw = np.array(wave)
+        print(array,arrayw)
 
         # Calculate the mean and standard deviation along the first axis (rows)
         means = np.mean(array, axis=0)
@@ -259,7 +261,7 @@ def process_files(solution,input_files,autofluorescence_files,min_spectra, max_s
             result.af_std = np.std(array, axis=0)
         
         if len(result.af) == 0:
-            if solution == "SERS":
+            if solution == "SERS_BWTeK":
                 result.afw = result.wave
                 result.af = np.polyval(np.polyfit(result.wave, result.value, 1), result.wave)
                 result.af_std = np.zeros(len(result.value))
@@ -316,7 +318,7 @@ def process_files(solution,input_files,autofluorescence_files,min_spectra, max_s
             # print(max_ctr_nom)
     
     # Normalize the data
-    if solution == "SERS":
+    if solution == "SERS_BWTeK":
         for measurement in data:
             intensities_array = np.array(measurement.value).reshape(-1, 1)  # Reshape to a column vector
             measurement.value = preprocessing.normalize(intensities_array, axis=0).flatten()
@@ -338,7 +340,7 @@ def process_files(solution,input_files,autofluorescence_files,min_spectra, max_s
         'Name': measurement.alias,
         **dict(zip(measurement.wave, measurement.value))
         })
-        if solution not in ("UV-Vis","FT-IR","SERS"):
+        if solution not in ("UV-Vis","FT-IR","SERS_BWTeK"):
             output.append({
             'Name': f"{measurement.alias}_raw",
             **dict(zip(measurement.wave, measurement.std * max_ctr_nom))
@@ -389,10 +391,10 @@ def process_files(solution,input_files,autofluorescence_files,min_spectra, max_s
                 cumulative_height = np.full(len(measurement.value),cumulative_height[0])
             plt.fill_between(measurement.wave, measurement.value + measurement.std + cumulative_height[:len(measurement.wave)], measurement.value - measurement.std + cumulative_height[:len(measurement.wave)], alpha=0.5)
 
-        if solution == "SERS" or solution == "FT-IR": 
+        if solution == "SERS_BWTeK" or solution == "FT-IR": 
             cumulative_height += 1.5 * max(measurement.value)  # Update cumulative height for next spectrum
     
-    if solution == "SERS":
+    if solution == "SERS_BWTeK":
         plt.xlabel("Raman Shift [cm-1]", fontsize = 18)
         plt.ylabel("Normalized Intensity [a.u]", fontsize = 18)
         plt.gca().set_yticklabels([])
@@ -414,7 +416,7 @@ def process_files(solution,input_files,autofluorescence_files,min_spectra, max_s
     # plt.show()
     plt.savefig(f"{basedir}/plot_{output_name}.png", bbox_inches="tight")
 
-    if solution not in ("UV-Vis","FT-IR","SERS"):
+    if solution not in ("UV-Vis","FT-IR","SERS_BWTeK"):
         plt.clf()
         plt.cla()
         cumulative_height = np.zeros(len(data[0].value))
@@ -463,14 +465,22 @@ def updatelist():
 def replace_dots_in_filenames(directory):
     for root_dir, _, files in os.walk(directory):
         for filename in files:
-            if '.' in filename:
-                name_parts = filename.rsplit('.', 1)  # Split at the last '.' to keep the extension
-                new_name = name_parts[0].replace('.', '_') + ('.' + name_parts[1] if len(name_parts) > 1 else '')
-                old_path = os.path.join(root_dir, filename)
-                new_path = os.path.join(root_dir, new_name)
-                if old_path != new_path:
-                    os.rename(old_path, new_path)
-                    print(f'Renamed: "{old_path}" -> "{new_path}"')
+            old_path = os.path.join(root_dir, filename)
+            # Split filename and extension
+            name, ext = os.path.splitext(filename)
+            
+            # Check for version suffix (e.g., p1.1.txt)
+            match = re.search(r'(\.\d+\.\d+)$', name)
+            if match:
+                base_name = name[:match.start()]  # Extract the part before the version suffix
+                new_name = base_name.replace('.', '_') + match.group(1) + ext
+            else:
+                new_name = name.replace('.', '_') + ext
+            
+            new_path = os.path.join(root, new_name)
+            if old_path != new_path:
+                os.rename(old_path, new_path)
+                print(f'Renamed: "{old_path}" -> "{new_path}"')
 
 def rename_files():
     folder_path = filedialog.askdirectory()
