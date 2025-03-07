@@ -1,0 +1,5 @@
+Methylene Blue, True
+SYBR Green, False
+SERS, False
+UV-Vis, False
+FT-IR, False
