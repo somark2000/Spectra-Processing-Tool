@@ -470,14 +470,20 @@ def replace_dots_in_filenames(directory):
             name, ext = os.path.splitext(filename)
             
             # Check for version suffix (e.g., p1.1.txt)
-            match = re.search(r'(\.\d+\.\d+)$', name)
+            match = re.search("([0-9]\.[0-9])$", name)
+            print(name,match)
             if match:
                 base_name = name[:match.start()]  # Extract the part before the version suffix
-                new_name = base_name.replace('.', '_') + match.group(1) + ext
+                new_name = base_name.replace('.', '_')
+                new_name = new_name.replace(' ', '_')
+                new_name += match.group(1)
+                new_name += ext
             else:
-                new_name = name.replace('.', '_') + ext
+                new_name = name.replace('.', '_')
+                new_name = name.replace(' ', '_')
+                new_name += ext
             
-            new_path = os.path.join(root, new_name)
+            new_path = os.path.join(root_dir, new_name)
             if old_path != new_path:
                 os.rename(old_path, new_path)
                 print(f'Renamed: "{old_path}" -> "{new_path}"')
@@ -505,14 +511,14 @@ if __name__ == "__main__":
     alias_entries = {}    
     
     # Solution dropdown
-    tk.Label(root, text="Fluorophor:").grid(row=0, column=0, padx=10, pady=5, sticky="e")
+    tk.Label(root, text="Spectra:").grid(row=0, column=0, padx=10, pady=5, sticky="e")
     solution_dropdown = ttk.Combobox(root, textvariable=solution_var, state="readonly", postcommand=updatelist)
     solution_dropdown["values"] = [f for f in fluorophors.keys()]
     solution_dropdown.grid(row=0, column=1, padx=10, pady=5)
     solution_dropdown.bind("<<ComboboxSelected>>", on_solution_change)
     
     # Insert new Fluorophor
-    new_spectra_button = ttk.Button(root, text="Add new Fluorophor", command=add_fluorophor)
+    new_spectra_button = ttk.Button(root, text="Add new Spectrometer", command=add_fluorophor)
     new_spectra_button.grid(row=0, column=2, pady=10)
 
     # Rename files to naming convention
