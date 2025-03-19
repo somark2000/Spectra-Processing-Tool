@@ -470,7 +470,7 @@ def replace_dots_in_filenames(directory):
             name, ext = os.path.splitext(filename)
             
             # Check for version suffix (e.g., p1.1.txt)
-            match = re.search("([0-9]\.[0-9])$", name)
+            match = re.search("([0-9].[0-9])$", name)
             print(name,match)
             if match:
                 base_name = name[:match.start()]  # Extract the part before the version suffix
