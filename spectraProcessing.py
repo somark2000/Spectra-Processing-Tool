@@ -142,6 +142,9 @@ def submit():
     if max_spectra == "": max_spectra = 0.0
     else: max_spectra = float(max_spectra)
     aliases = {filename: entry.get() for filename, entry in alias_entries.items()}
+    peaks = peak_display_var.get()
+    normalize = normalize_var.get()
+    denoise = denoise_var.get()
     
     # Collect and print the values for debugging purposes
     print("Solution:", solution)
@@ -157,7 +160,7 @@ def submit():
     except OSError:
         pass
     
-    process_files(solution,input_files,autofluorescence_files,min_spectra, max_spectra,output_name,base_dir,aliases)
+    process_files(solution,input_files,autofluorescence_files,min_spectra, max_spectra,output_name,base_dir,aliases,peaks,normalize,denoise)
 
 # Open a Tk window to select multiple txt files
 def select_files():
@@ -174,7 +177,8 @@ def normalize_spectrum(wavelengths, intensities):
     return [intensity / max_intensity for intensity in intensities]
 
 # Process files and perform tasks
-def process_files(solution,input_files,autofluorescence_files,min_spectra, max_spectra,output_name,basedir,aliases):
+def process_files(solution,input_files,autofluorescence_files,min_spectra, max_spectra,output_name,basedir,aliases,peaks,normalize,denoise):
+    # Split the input files string into a list of file paths
     file_paths = input_files.split(',')
     file_paths = [x.strip() for x in file_paths]
     file_paths_af = autofluorescence_files.split(',')
@@ -550,6 +554,21 @@ if __name__ == "__main__":
     tk.Label(root, text="Spectra Max:").grid(row=4, column=0, padx=10, pady=5, sticky="e")
     max_spectra_entry = tk.Entry(root, textvariable=max_spectra_var, width=10)
     max_spectra_entry.grid(row=4, column=1, padx=10, pady=5, sticky="w")
+
+    # Peak display checkbox
+    peak_display_var = tk.BooleanVar()
+    peak_display_checkbox = tk.Checkbutton(root, text="Show Peak Values", variable=peak_display_var)
+    peak_display_checkbox.grid(row=3, column=2, padx=10, pady=5, sticky="w")
+
+    # Normalize checkbox
+    normalize_var = tk.BooleanVar()
+    normalize_checkbox = tk.Checkbutton(root, text="Normalize", variable=normalize_var)
+    normalize_checkbox.grid(row=4, column=2, padx=10, pady=5, sticky="w")
+
+    # Denoise checkbox
+    denoise_var = tk.BooleanVar()
+    denoise_checkbox = tk.Checkbutton(root, text="Denoise", variable=denoise_var)
+    denoise_checkbox.grid(row=3, column=3, padx=10, pady=5, sticky="w")
 
     # Name field
     tk.Label(root, text="Output Name:").grid(row=5, column=0, padx=10, pady=5, sticky="e")
