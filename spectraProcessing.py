@@ -224,6 +224,9 @@ def process_files(solution,input_files,autofluorescence_files,min_spectra, max_s
         delimiter = ';'
         skip_footer = 0
         if solution == "SERS_BWTeK": skip_lines = 1
+        elif solution == "SERS_ReniShaw": 
+            skip_lines = 1
+            delimiter = '	'
         elif solution == "SERS_Avantes": skip_lines = 0
         elif solution == "FT-IR": 
             skip_lines = 19
@@ -244,7 +247,7 @@ def process_files(solution,input_files,autofluorescence_files,min_spectra, max_s
         # Convert the list of lists to a NumPy array
         array = np.array(samples)
         arrayw = np.array(wave)
-        print(array,arrayw)
+        # print(array,arrayw)
 
         # Calculate the mean and standard deviation along the first axis (rows)
         means = np.mean(array, axis=0)
@@ -262,7 +265,7 @@ def process_files(solution,input_files,autofluorescence_files,min_spectra, max_s
             fl = grouped_files_baseline[gr]
             w = []
             s = []
-            print("the groups are ",gr,group)
+            # print("the groups are ",gr,group)
             for file_path in fl:
                 # Read the file and extract the second column using numpy
                 file_data = np.genfromtxt(file_path, encoding="UTF-8", dtype=np.float64, skip_header=8,delimiter=';')
@@ -338,8 +341,9 @@ def process_files(solution,input_files,autofluorescence_files,min_spectra, max_s
     # Denoise the data
     if denoise:
         for measurement in data:
+            print(f"{type(measurement.std)} {type(np.std(wavelet(measurement.value)))}")
             measurement.value = wavelet(measurement.value)
-            measurement.std = np.std(measurement.value)
+            # measurement.std = np.std(measurement.value)
 
     # Normalize the data
     if solution == "SERS_BWTeK":
@@ -362,7 +366,7 @@ def process_files(solution,input_files,autofluorescence_files,min_spectra, max_s
         'Name': measurement.alias,
         **dict(zip(measurement.wave, measurement.value))
         })
-        if solution not in ("UV-Vis","FT-IR","SERS_BWTeK"):
+        if normalize:
             output.append({
             'Name': f"{measurement.alias}_raw",
             **dict(zip(measurement.wave, measurement.std * max_ctr_nom))
@@ -402,11 +406,19 @@ def process_files(solution,input_files,autofluorescence_files,min_spectra, max_s
         # Plot the mean values
         try:
             line = plt.plot(measurement.wave, measurement.value+cumulative_height[:len(measurement.wave)], label=measurement.alias)
-            color = line.get_color()
+            print(f"line type {type(line)} \n the line is {line[0].get_color()}")
+            color = line[0].get_color()
             if show_peaks:
-                peaks = np.argmax(measurement.value)
-                plt.scatter(measurement.wave[peaks], measurement.value[peaks], color=color, label='Max Peak')
-                plt.text(measurement.wave[peaks], measurement.value[peaks], f'{measurement.wave[peaks]:.2f}', fontsize=12, color=color)
+                print("SSSSSSSSSSSSSSSSS")
+                # peaks = np.argmax(measurement.value)
+                peaks, _  = find_peaks(measurement.value, width=10) # peaks is ndarray
+                label = [str(round(f)) for f in list(measurement.wave[peaks])]
+                h = [measurement.value[p]+cumulative_height[p] for p in peaks]
+                print(f"the peaks are {peaks} {label}")
+                print(f"the lenghts are {len(measurement.wave[peaks])} {len(h)} {len(label)}")
+                plt.scatter(measurement.wave[peaks], h, color=color)
+                for i,p in enumerate(peaks):
+                    plt.text(measurement.wave[p], h[i], label[i], fontsize=16, color=color)
         except ValueError:
             messagebox.showerror("Error", "Please adjust the domain to be plotted !")
         # plt.plot(measurement.wave, measurement.value+cumulative_height[:len(measurement.wave)], label=measurement.alias)
@@ -419,12 +431,12 @@ def process_files(solution,input_files,autofluorescence_files,min_spectra, max_s
                 cumulative_height = np.full(len(measurement.value),cumulative_height[0])
             plt.fill_between(measurement.wave, measurement.value + measurement.std + cumulative_height[:len(measurement.wave)], measurement.value - measurement.std + cumulative_height[:len(measurement.wave)], alpha=0.5)
 
-        if solution in ["SERS_BWTeK","FT-IR", "SERS_Avantes","SERS_Renishaw"]: 
+        if solution in ["SERS_BWTeK","FT-IR", "SERS_Avantes","SERS_ReniShaw"]: 
             if max_deplacement < max(measurement.value):
                 max_deplacement = max(measurement.value)
-            cumulative_height += 1.5 * max_deplacement  # Update cumulative height for next spectrum
+            cumulative_height += 1.2 * max_deplacement  # Update cumulative height for next spectrum
     
-    if solution in ["SERS_BWTeK", "SERS_Avantes","SERS_Renishaw"]:
+    if solution in ["SERS_BWTeK", "SERS_Avantes","SERS_ReniShaw"]:
         plt.xlabel("Raman Shift [cm-1]", fontsize = 18)
         plt.ylabel("Normalized Intensity [a.u]", fontsize = 18)
         plt.gca().set_yticklabels([])
@@ -440,12 +452,13 @@ def process_files(solution,input_files,autofluorescence_files,min_spectra, max_s
         plt.ylabel("Intensity [a.u]", fontsize = 18)
     plt.xticks(fontsize=16)
     plt.yticks(fontsize=16)
-    plt.tight_layout()
+    # plt.tight_layout()
     plt.tick_params(axis='both', direction='in')
     plt.legend(fontsize=18, loc='upper right', frameon=True, framealpha=0.5, edgecolor="black")
     # plt.legend(fontsize=18, loc='upper right', frameon=True, framealpha=0.5, edgecolor="black",bbox_to_anchor=(1.1, 1))
     # plt.show()
-    plt.savefig(f"{basedir}/plot_{output_name}.png", bbox_inches="tight")
+    # plt.savefig(f"{basedir}/plot_{output_name}.png", bbox_inches="tight")
+    plt.savefig(f"{basedir}/plot_{output_name}.png")
 
     # if solution not in ("UV-Vis","FT-IR","SERS_BWTeK"):
     #     plt.clf()
