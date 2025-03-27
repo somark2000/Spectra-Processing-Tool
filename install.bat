@@ -45,7 +45,7 @@ if %errorlevel% == 0 (
 )
 
 echo Installing required libraries...
-"%python%" -m pip install PyInstaller pandas matplotlib scipy numpy tk scikit-learn openpyxl xlrd scikit-learn-intelex
+"%python%" -m pip install PyInstaller pandas matplotlib scipy numpy tk scikit-learn openpyxl xlrd scikit-learn-intelex PyWavelets
 if %errorlevel% == 1 (
     echo Failed to install libraries.
     echo Exiting script.
