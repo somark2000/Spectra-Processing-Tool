@@ -57,7 +57,7 @@ def savgol(data, window_size, poly_order):
     return savgol_filter(data, window_size, poly_order)
 
 # Wavelet Denoising
-def wavelet(data, wavelet='db4', level=2):
+def wavelet(data, wavelet='db4', level=None):
     coeffs = pywt.wavedec(data, wavelet, level=level)
     threshold = np.std(coeffs[-1])  # Thresholding noise
     coeffs[1:] = [pywt.threshold(c, threshold, mode='soft') for c in coeffs[1:]]
@@ -65,6 +65,13 @@ def wavelet(data, wavelet='db4', level=2):
 
 # Select input files
 def select_input_files():
+    if len(alias_entries.values())> 0:
+        for entry,entry_label in zip(alias_entries.values(),alias_entries_labels.values()):
+            entry.destroy()
+            entry_label.destroy()
+        alias_entries.clear()
+        alias_entries_labels.clear()
+        submit_button.grid(row=7, column=0, columnspan=3, pady=10)
     files = filedialog.askopenfilenames(title="Select Input Files",filetypes=[("Text files", "*.txt")])
     input_files_var.set(", ".join(files))
     file_paths = [x.strip() for x in files]
@@ -76,11 +83,13 @@ def select_input_files():
         grouped_files[basename].append(file_path)
     
     for i,group in enumerate(grouped_files.keys()):
-        tk.Label(root, text=f"{group.split('/')[-1]}: ").grid(row=6+i, column=0, padx=10, pady=5, sticky="e")
+        entry_label = tk.Label(root, text=f"{group.split('/')[-1]}: ")
+        entry_label.grid(row=6+i, column=0, padx=10, pady=5, sticky="e")
         entry = tk.Entry(root, width=80)
         entry.grid(row=6+i, column=1, padx=10, pady=5, columnspan=2)
         # Store entry widget in dictionary with filename as key
         alias_entries[group] = entry
+        alias_entries_labels[group] = entry_label
     submit_button.grid(row=7+len(grouped_files), column=0, columnspan=3, pady=10)
 
 # Select autofluorescence files
@@ -151,6 +160,7 @@ def submit():
     min_spectra = min_spectra_var.get()
     max_spectra = max_spectra_var.get()
     output_name = name_var.get()
+    if output_name == "": output_name = "output"
     if min_spectra == "": min_spectra = 0.0
     else: min_spectra = float(min_spectra)
     if max_spectra == "": max_spectra = 0.0
@@ -159,14 +169,7 @@ def submit():
     peaks = peak_display_var.get()
     normalize = normalize_var.get()
     denoise = denoise_var.get()
-    
-    # Collect and print the values for debugging purposes
-    print("Solution:", solution)
-    print("Input Files:", input_files)
-    print("Autofluorescence Files:", autofluorescence_files)
-    print("Spectra Limits:", f"Min: {min_spectra}, Max: {max_spectra}")
-    print("Output Name:", output_name)
-    print("Aliases:", aliases)
+
     base_dir = find_folder("Spectra Processing")
     base_dir=os.path.join(base_dir, output_name)
     try:
@@ -184,14 +187,14 @@ def select_files():
     return file_paths
 
 # Function to normalize a spectrum
-def normalize_spectrum(wavelengths, intensities):
+def normalize_spectrum(intensities):
     max_intensity = max(intensities)
     if max_intensity == 0:
         return intensities
     return [intensity / max_intensity for intensity in intensities]
 
 # Process files and perform tasks
-def process_files(solution,input_files,autofluorescence_files,min_spectra, max_spectra,output_name,basedir,aliases,show_peaks,normalize,denoise):
+def process_files(solution: str, input_files: str, autofluorescence_files: str, min_spectra: float, max_spectra: float, output_name: str, basedir: str, aliases: list, show_peaks: bool, normalize: bool, denoise: bool):
     # Split the input files string into a list of file paths
     file_paths = input_files.split(',')
     file_paths = [x.strip() for x in file_paths]
@@ -217,7 +220,6 @@ def process_files(solution,input_files,autofluorescence_files,min_spectra, max_s
     for group, files in grouped_files.items():
         print(f"Processing group: {group}")
         headers.append(group)
-        
         wave = []
         samples = []
         skip_lines = 8
@@ -256,7 +258,7 @@ def process_files(solution,input_files,autofluorescence_files,min_spectra, max_s
 
         # Combine the means and standard deviations into a list of tuples
         result = Measurement(group,means,stds,meansw,aliases[group])
-        print("current group is ",group)
+        print("current group is ",result.alias)
         
         # check for autofluorescence
         print("af groups: ",len(grouped_files_baseline.keys()))
@@ -282,7 +284,7 @@ def process_files(solution,input_files,autofluorescence_files,min_spectra, max_s
             result.af_std = np.std(array, axis=0)
         
         if len(result.af) == 0:
-            if solution == "SERS_BWTeK":
+            if solution in ["SERS_BWTeK", "SERS_Avantes","SERS_ReniShaw"]:
                 result.afw = result.wave
                 result.af = np.polyval(np.polyfit(result.wave, result.value, 1), result.wave)
                 result.af_std = np.zeros(len(result.value))
@@ -290,7 +292,6 @@ def process_files(solution,input_files,autofluorescence_files,min_spectra, max_s
                 result.afw = result.wave
                 result.af = np.zeros(len(result.value))
                 result.af_std = np.zeros(len(result.value))
-        # print("af shape ",len(result.af))
         data.append(result)
     
     for measurement in data:
@@ -310,10 +311,7 @@ def process_files(solution,input_files,autofluorescence_files,min_spectra, max_s
             index_start = (np.abs(measurement.wave - min_spectra)).argmin()
         if max_spectra != 0.0:
             index_end = (np.abs(measurement.wave - max_spectra)).argmin()
-        # if index_start > index_end: index_start,index_end = index_end,index_start
-        # print(index_start,measurement.wave[index_start],min_spectra,index_end,measurement.wave[index_end],max_spectra)
         
-        # print("test1 ",len(measurement.value),measurement.name,len(measurement.af))
         measurement.value = measurement.value[index_start:index_end]
         measurement.wave = measurement.wave[index_start:index_end]
         measurement.std = measurement.std[index_start:index_end]
@@ -326,33 +324,28 @@ def process_files(solution,input_files,autofluorescence_files,min_spectra, max_s
         measurement.afw = measurement.afw[index_start:index_end]
         measurement.af = measurement.af[index_start:index_end]
         measurement.af_std = measurement.af_std[index_start:index_end]
-        # print("test2 ",len(measurement.value),measurement.name,len(measurement.af))
         
     # Subtract autofluorescence and adjust std
     for measurement in data:
-        # print(len(measurement.value),measurement.name,len(measurement.af))
         measurement.value -= measurement.af
         measurement.std += measurement.af_std
         if "_contr_" in measurement.name or "_control_" in measurement.name or "_ctr_" in measurement.name or "_ctrl_" in measurement.name: 
-            # print(measurement.name)
             max_ctr_nom,_,_ = measurement.find_max()
-            # print(max_ctr_nom)
     
     # Denoise the data
     if denoise:
         for measurement in data:
-            print(f"{type(measurement.std)} {type(np.std(wavelet(measurement.value)))}")
+            # print(f"{type(measurement.std)} {type(np.std(wavelet(measurement.value)))}")
             measurement.value = wavelet(measurement.value)
-            # measurement.std = np.std(measurement.value)
 
     # Normalize the data
-    if solution == "SERS_BWTeK":
+    if solution in ["SERS_BWTeK", "SERS_Avantes","SERS_ReniShaw"]:
         for measurement in data:
             intensities_array = np.array(measurement.value).reshape(-1, 1)  # Reshape to a column vector
             measurement.value = preprocessing.normalize(intensities_array, axis=0).flatten()
             intensities_array = np.array(measurement.std).reshape(-1, 1)  # Reshape to a column vector
             measurement.std = preprocessing.normalize(intensities_array, axis=0).flatten()
-    elif solution in ("UV-Vis","FT-IR"): pass
+    elif solution in ["UV-Vis","FT-IR"]: pass
     elif normalize:
         for measurement in data: 
             measurement.value = np.array([float(x)/max_ctr_nom for x in measurement.value])
@@ -397,31 +390,33 @@ def process_files(solution,input_files,autofluorescence_files,min_spectra, max_s
                           'Max Std': max_std})
     
     # Plot the data
-    cumulative_height = np.zeros(len(data[0].value))
+    maxlen=0
+    for d in data: 
+        if len(d.wave)>maxlen: maxlen=len(d.wave)
+    cumulative_height = np.zeros(maxlen)
     max_deplacement = 0
     plt.figure(figsize=(20,14))
     for measurement in data:
-        # name = extract_nume_label(measurement.name)
-        # plt.plot(measurement.wave, measurement.value, label=name)
-        # Plot the mean values
         try:
             line = plt.plot(measurement.wave, measurement.value+cumulative_height[:len(measurement.wave)], label=measurement.alias)
-            print(f"line type {type(line)} \n the line is {line[0].get_color()}")
+            # print(f"line type {type(line)} \n the line is {line[0].get_color()}")
             color = line[0].get_color()
             if show_peaks:
-                print("SSSSSSSSSSSSSSSSS")
                 # peaks = np.argmax(measurement.value)
-                peaks, _  = find_peaks(measurement.value, width=10) # peaks is ndarray
+                width = 30 # width of the peak
+                if solution in ["SERS_BWTeK", "SERS_Avantes","SERS_ReniShaw"]: width = 45
+                elif solution == "FT-IR": width = 25
+                elif solution == "UV-Vis": width = 15
+                peaks, _  = find_peaks(measurement.value, width=width) # peaks is ndarray
                 label = [str(round(f)) for f in list(measurement.wave[peaks])]
                 h = [measurement.value[p]+cumulative_height[p] for p in peaks]
-                print(f"the peaks are {peaks} {label}")
-                print(f"the lenghts are {len(measurement.wave[peaks])} {len(h)} {len(label)}")
+                # print(f"the peaks are {peaks} {label}")
+                # print(f"the lenghts are {len(measurement.wave[peaks])} {len(h)} {len(label)}")
                 plt.scatter(measurement.wave[peaks], h, color=color)
                 for i,p in enumerate(peaks):
                     plt.text(measurement.wave[p], h[i], label[i], fontsize=16, color=color)
         except ValueError:
             messagebox.showerror("Error", "Please adjust the domain to be plotted !")
-        # plt.plot(measurement.wave, measurement.value+cumulative_height[:len(measurement.wave)], label=measurement.alias)
         
         # Plot the upper and lower bounds (mean +/- standard deviation)
         try:
@@ -439,7 +434,7 @@ def process_files(solution,input_files,autofluorescence_files,min_spectra, max_s
     if solution in ["SERS_BWTeK", "SERS_Avantes","SERS_ReniShaw"]:
         plt.xlabel("Raman Shift [cm-1]", fontsize = 18)
         plt.ylabel("Normalized Intensity [a.u]", fontsize = 18)
-        plt.gca().set_yticklabels([])
+        # plt.gca().set_yticklabels([])
     elif solution == "UV-Vis":
         plt.xlabel("Wavelength [nm]", fontsize = 18)
         plt.ylabel("Intensity [a.u]", fontsize = 18)
@@ -543,6 +538,7 @@ if __name__ == "__main__":
     read_fluorophor(fluorophors)
     # Dictionary to store aliases
     alias_entries = {}    
+    alias_entries_labels = {}    
     
     # Solution dropdown
     tk.Label(root, text="Spectra:").grid(row=0, column=0, padx=10, pady=5, sticky="e")
@@ -614,6 +610,4 @@ if __name__ == "__main__":
 
     # Start the application
     root.mainloop()
-    # process_files()
-    # "C:\Users\smark\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\LocalCache\local-packages\Python312\Scripts\pyinstaller.exe" --onefile --noconsole ..\spectraProcessing.py
     
