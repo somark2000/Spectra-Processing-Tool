@@ -63,8 +63,9 @@ def wavelet(data, wavelet='db4', level=None):
     coeffs[1:] = [pywt.threshold(c, threshold, mode='soft') for c in coeffs[1:]]
     return pywt.waverec(coeffs, wavelet)[:len(data)]
 
-# Select input files
-def select_input_files():
+def clear_input_files():
+    input_files_var.set("")
+    input_files_entry.delete(0, tk.END)  # Clear the entry field
     if len(alias_entries.values())> 0:
         for entry,entry_label in zip(alias_entries.values(),alias_entries_labels.values()):
             entry.destroy()
@@ -72,16 +73,36 @@ def select_input_files():
         alias_entries.clear()
         alias_entries_labels.clear()
         submit_button.grid(row=7, column=0, columnspan=3, pady=10)
+
+def clear_autofluorescence_files():
+    autofluorescence_var.set("")
+    autofluorescence_entry.config(state="disabled")
+    autofluorescence_button.config(state="disabled")
+    autofluorescence_entry.delete(0, tk.END)  # Clear the entry field
+
+# Select input files
+def select_input_files():
     files = filedialog.askopenfilenames(title="Select Input Files",filetypes=[("Text files", "*.txt")])
-    input_files_var.set(", ".join(files))
-    file_paths = [x.strip() for x in files]
+    input_files_var.set( ", ".join(files) + ", " + input_files_var.get())
+    file_paths = [x.strip() for x in input_files_var.get().split(',') if x.strip() != ""]
+    print("filepaths: ",file_paths)
+    
     
     # Group files by their basename prefix
     grouped_files = defaultdict(list)
     for file_path in file_paths:
         basename = "".join(file_path.split('/')[-1]).split('.')[0] # Extract basename (e.g., 'a', 'b')
         grouped_files[basename].append(file_path)
+    try:grouped_files.pop('')  # Remove empty keys if any
+    except: pass
     
+    if len(alias_entries.values())> 0:
+        for entry,entry_label in zip(alias_entries.values(),alias_entries_labels.values()):
+            entry.destroy()
+            entry_label.destroy()
+        alias_entries.clear()
+        alias_entries_labels.clear()
+
     for i,group in enumerate(grouped_files.keys()):
         entry_label = tk.Label(root, text=f"{group.split('/')[-1]}: ")
         entry_label.grid(row=6+i, column=0, padx=10, pady=5, sticky="e")
@@ -197,7 +218,7 @@ def normalize_spectrum(intensities):
 def process_files(solution: str, input_files: str, autofluorescence_files: str, min_spectra: float, max_spectra: float, output_name: str, basedir: str, aliases: list, show_peaks: bool, normalize: bool, denoise: bool):
     # Split the input files string into a list of file paths
     file_paths = input_files.split(',')
-    file_paths = [x.strip() for x in file_paths]
+    file_paths = [x.strip() for x in file_paths if x.strip() != ""]
     file_paths_af = autofluorescence_files.split(',')
     file_paths_af = [x.strip() for x in file_paths_af]
     
@@ -207,7 +228,7 @@ def process_files(solution: str, input_files: str, autofluorescence_files: str, 
     for file_path in file_paths:
         basename = "".join(file_path.split('/')[-1]).split('.')[0] # Extract basename (e.g., 'a', 'b')
         grouped_files[basename].append(file_path)
-    print(grouped_files)
+    print("my gruofiles are:\n",grouped_files)
         
     for file_path in file_paths_af:
         basename = "".join(file_path.split('/')[-1]).split('.')[0] # Extract basename (e.g., 'a', 'b')
@@ -561,16 +582,18 @@ if __name__ == "__main__":
     # input_files_button = ttk.Button(root, text="Select Files", command=select_input_files, postcommand=get_aliases)
     input_files_button.grid(row=1, column=1, padx=10, pady=5)
     input_files_entry = tk.Entry(root, textvariable=input_files_var, state="readonly", width=40)
-    input_files_entry.grid(row=1, column=2, padx=10, pady=5, columnspan=2)
+    input_files_entry.grid(row=1, column=2, padx=10, pady=5)
+    input_files_button_clear = ttk.Button(root, text="Clear", command=clear_input_files)
+    input_files_button_clear.grid(row=1, column=3, padx=10, pady=5)
 
     # Autofluorescence field
     tk.Label(root, text="Autofluorescence:").grid(row=2, column=0, padx=10, pady=5, sticky="e")
     autofluorescence_button = ttk.Button(root, text="Select Files", command=select_autofluorescence_files)
     autofluorescence_button.grid(row=2, column=1, padx=10, pady=5)
-    # autofluorescence_button.config(state="disabled")
     autofluorescence_entry = tk.Entry(root, textvariable=autofluorescence_var, state="disable", width=40)
-    autofluorescence_entry.grid(row=2, column=2, padx=10, pady=5, columnspan=2)
-    # autofluorescence_entry.config(state="disabled")
+    autofluorescence_entry.grid(row=2, column=2, padx=10, pady=5)
+    autofluorescence_files_button_clear = ttk.Button(root, text="Clear", command=clear_autofluorescence_files)
+    autofluorescence_files_button_clear.grid(row=2, column=3, padx=10, pady=5)
 
     # Spectra limits
     tk.Label(root, text="Spectra Min:").grid(row=3, column=0, padx=10, pady=5, sticky="e")
