@@ -15,3 +15,9 @@ all the updates will be downloaded automatically from the remote location and wi
 
 # Special Notes:
 if  you are using a macOS or any Linux and encounter error in the installation process please install python 3.11.9 on your machine and delete any older python version
+
+# Hints
+* if you are not sure that your files follow the naming convention implemented for the current program feel free to use the rename button which will automatically rename your files in the desired folder
+* you can select input files for a single plot from multiple locations 
+* you can restart plotting with new files without needing to restart the program 
+* showing peaks at the moment is done automatically based on the spectra you want to analize. This means that it may detect peaks you do not need and overcrowd your spectra or my not detect the peak you desire since it is not distinguishable enough
