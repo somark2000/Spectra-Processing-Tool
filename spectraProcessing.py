@@ -189,6 +189,7 @@ def submit():
     aliases = {filename: entry.get() for filename, entry in alias_entries.items()}
     peaks = peak_display_var.get()
     normalize = normalize_var.get()
+    normalize_all = normalize_all_var.get()
     denoise = denoise_var.get()
 
     base_dir = find_folder("Spectra Processing")
@@ -198,7 +199,7 @@ def submit():
     except OSError:
         pass
     
-    process_files(solution,input_files,autofluorescence_files,min_spectra, max_spectra,output_name,base_dir,aliases,peaks,normalize,denoise)
+    process_files(solution,input_files,autofluorescence_files,min_spectra, max_spectra,output_name,base_dir,aliases,peaks,normalize, normalize_all,denoise)
 
 # Open a Tk window to select multiple txt files
 def select_files():
@@ -215,7 +216,7 @@ def normalize_spectrum(intensities):
     return [intensity / max_intensity for intensity in intensities]
 
 # Process files and perform tasks
-def process_files(solution: str, input_files: str, autofluorescence_files: str, min_spectra: float, max_spectra: float, output_name: str, basedir: str, aliases: list, show_peaks: bool, normalize: bool, denoise: bool):
+def process_files(solution: str, input_files: str, autofluorescence_files: str, min_spectra: float, max_spectra: float, output_name: str, basedir: str, aliases: list, show_peaks: bool, normalize: bool, normalize_all: bool, denoise: bool):
     # Split the input files string into a list of file paths
     file_paths = input_files.split(',')
     file_paths = [x.strip() for x in file_paths if x.strip() != ""]
@@ -366,9 +367,17 @@ def process_files(solution: str, input_files: str, autofluorescence_files: str, 
             measurement.value = preprocessing.normalize(intensities_array, axis=0).flatten()
             intensities_array = np.array(measurement.std).reshape(-1, 1)  # Reshape to a column vector
             measurement.std = preprocessing.normalize(intensities_array, axis=0).flatten()
-    elif solution in ["UV-Vis","FT-IR"]: pass
+    # elif solution in ["UV-Vis","FT-IR"]: pass
     elif normalize:
+        for measurement in data:
+            maxi,_,_ = measurement.find_max()
+            if maxi > max_ctr_nom: max_ctr_nom = maxi
         for measurement in data: 
+            measurement.value = np.array([float(x)/max_ctr_nom for x in measurement.value])
+            measurement.std = np.array([float(x)/max_ctr_nom for x in measurement.std])
+    elif normalize_all:
+        for measurement in data:
+            max_ctr_nom,_,_ = measurement.find_max()
             measurement.value = np.array([float(x)/max_ctr_nom for x in measurement.value])
             measurement.std = np.array([float(x)/max_ctr_nom for x in measurement.std])
     
@@ -613,6 +622,11 @@ if __name__ == "__main__":
     normalize_var = tk.BooleanVar()
     normalize_checkbox = tk.Checkbutton(root, text="Normalize", variable=normalize_var)
     normalize_checkbox.grid(row=4, column=2, padx=10, pady=5, sticky="w")
+
+    # Normalize_all_to_one checkbox
+    normalize_all_var = tk.BooleanVar()
+    normalize_all_checkbox = tk.Checkbutton(root, text="Normalize all to 1", variable=normalize_all_var)
+    normalize_all_checkbox.grid(row=4, column=3, padx=10, pady=5, sticky="w")
 
     # Denoise checkbox
     denoise_var = tk.BooleanVar()
