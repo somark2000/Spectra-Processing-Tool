@@ -104,14 +104,16 @@ def select_input_files():
         alias_entries_labels.clear()
 
     for i,group in enumerate(grouped_files.keys()):
-        entry_label = tk.Label(root, text=f"{group.split('/')[-1]}: ")
+        entry_label = tk.Label(frame, text=f"{group.split('/')[-1]}: ")
         entry_label.grid(row=6+i, column=0, padx=10, pady=5, sticky="e")
-        entry = tk.Entry(root, width=80)
+        entry = tk.Entry(frame, width=80)
         entry.grid(row=6+i, column=1, padx=10, pady=5, columnspan=2)
         # Store entry widget in dictionary with filename as key
         alias_entries[group] = entry
         alias_entries_labels[group] = entry_label
     submit_button.grid(row=7+len(grouped_files), column=0, columnspan=3, pady=10)
+    container.update_scrollbar_visibility(threshold_height=400)
+
 
 # Select autofluorescence files
 def select_autofluorescence_files():
@@ -552,10 +554,49 @@ def rename_files():
     if folder_path:
         replace_dots_in_filenames(folder_path)
     
+class ScrollableFrame(ttk.Frame):
+    def __init__(self, container, *args, **kwargs):
+        super().__init__(container, *args, **kwargs)
+
+        canvas = tk.Canvas(self)
+        scrollbar = ttk.Scrollbar(self, orient="vertical", command=canvas.yview)
+        self.scrollable_frame = ttk.Frame(canvas)
+
+        self.scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(
+                scrollregion=canvas.bbox("all")
+            )
+        )
+
+        self.canvas_window = canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        self.canvas = canvas
+        self.scrollbar = scrollbar
+
+    def update_scrollbar_visibility(self, threshold_height):
+        self.update_idletasks()
+        content_height = self.scrollable_frame.winfo_height()
+        if content_height > threshold_height:
+            self.scrollbar.pack(side="right", fill="y")
+        else:
+            self.scrollbar.pack_forget()
+
 if __name__ == "__main__":
-    # Create main application window
     root = tk.Tk()
     root.title("Spectra processing")
+    root.geometry("800x400")  # Starting size
+
+    container = ScrollableFrame(root)
+    container.pack(fill="both", expand=True)
+
+    frame = container.scrollable_frame
+
     # Variables
     solution_var = tk.StringVar()
     input_files_var = tk.StringVar()
@@ -563,88 +604,134 @@ if __name__ == "__main__":
     min_spectra_var = tk.StringVar()
     max_spectra_var = tk.StringVar()
     name_var = tk.StringVar()
-    fluorophors = dict() #for easier search
-    fluorophors[''] = "False"
+    peak_display_var = tk.BooleanVar()
+    normalize_var = tk.BooleanVar()
+    normalize_all_var = tk.BooleanVar()
+    normalize_by_group_var = tk.BooleanVar()
+    denoise_var = tk.BooleanVar()
+    fluorophors = {"": "False"}
+    alias_entries = {}
+    alias_entries_labels = {}
+
     read_fluorophor(fluorophors)
-    # Dictionary to store aliases
-    alias_entries = {}    
-    alias_entries_labels = {}    
     
     # Solution dropdown
-    tk.Label(root, text="Spectra:").grid(row=0, column=0, padx=10, pady=5, sticky="e")
-    solution_dropdown = ttk.Combobox(root, textvariable=solution_var, state="readonly", postcommand=updatelist)
+    tk.Label(frame, text="Spectra:").grid(row=0, column=0, padx=10, pady=5, sticky="e")
+    solution_dropdown = ttk.Combobox(frame, textvariable=solution_var, state="readonly", postcommand=updatelist)
     solution_dropdown["values"] = [f for f in fluorophors.keys()]
     solution_dropdown.grid(row=0, column=1, padx=10, pady=5)
     solution_dropdown.bind("<<ComboboxSelected>>", on_solution_change)
     
     # Insert new Fluorophor
-    new_spectra_button = ttk.Button(root, text="Add new Spectrometer", command=add_fluorophor)
+    new_spectra_button = ttk.Button(frame, text="Add new Spectrometer", command=add_fluorophor)
     new_spectra_button.grid(row=0, column=2, pady=10)
 
     # Rename files to naming convention
-    rename_files_button = ttk.Button(root, text="Rename Files", command=rename_files)
+    rename_files_button = ttk.Button(frame, text="Rename Files", command=rename_files)
     rename_files_button.grid(row=0, column=3, pady=10)
 
     # Input files field
-    tk.Label(root, text="Input Files:").grid(row=1, column=0, padx=10, pady=5, sticky="e")
-    input_files_button = ttk.Button(root, text="Select Files", command=select_input_files)
-    # input_files_button = ttk.Button(root, text="Select Files", command=select_input_files, postcommand=get_aliases)
+    tk.Label(frame, text="Input Files:").grid(row=1, column=0, padx=10, pady=5, sticky="e")
+    input_files_button = ttk.Button(frame, text="Select Files", command=select_input_files)
+    # input_files_button = ttk.Button(frame, text="Select Files", command=select_input_files, postcommand=get_aliases)
     input_files_button.grid(row=1, column=1, padx=10, pady=5)
-    input_files_entry = tk.Entry(root, textvariable=input_files_var, state="readonly", width=40)
+    input_files_entry = tk.Entry(frame, textvariable=input_files_var, state="readonly", width=40)
     input_files_entry.grid(row=1, column=2, padx=10, pady=5)
-    input_files_button_clear = ttk.Button(root, text="Clear", command=clear_input_files)
+    input_files_button_clear = ttk.Button(frame, text="Clear", command=clear_input_files)
     input_files_button_clear.grid(row=1, column=3, padx=10, pady=5)
 
     # Autofluorescence field
-    tk.Label(root, text="Autofluorescence:").grid(row=2, column=0, padx=10, pady=5, sticky="e")
-    autofluorescence_button = ttk.Button(root, text="Select Files", command=select_autofluorescence_files)
+    tk.Label(frame, text="Autofluorescence:").grid(row=2, column=0, padx=10, pady=5, sticky="e")
+    autofluorescence_button = ttk.Button(frame, text="Select Files", command=select_autofluorescence_files)
     autofluorescence_button.grid(row=2, column=1, padx=10, pady=5)
-    autofluorescence_entry = tk.Entry(root, textvariable=autofluorescence_var, state="disable", width=40)
+    autofluorescence_entry = tk.Entry(frame, textvariable=autofluorescence_var, state="disable", width=40)
     autofluorescence_entry.grid(row=2, column=2, padx=10, pady=5)
-    autofluorescence_files_button_clear = ttk.Button(root, text="Clear", command=clear_autofluorescence_files)
+    autofluorescence_files_button_clear = ttk.Button(frame, text="Clear", command=clear_autofluorescence_files)
     autofluorescence_files_button_clear.grid(row=2, column=3, padx=10, pady=5)
 
     # Spectra limits
-    tk.Label(root, text="Spectra Min:").grid(row=3, column=0, padx=10, pady=5, sticky="e")
-    min_spectra_entry = tk.Entry(root, textvariable=min_spectra_var, width=10)
+    tk.Label(frame, text="Spectra Min:").grid(row=3, column=0, padx=10, pady=5, sticky="e")
+    min_spectra_entry = tk.Entry(frame, textvariable=min_spectra_var, width=10)
     min_spectra_entry.grid(row=3, column=1, padx=10, pady=5, sticky="w")
 
-    tk.Label(root, text="Spectra Max:").grid(row=4, column=0, padx=10, pady=5, sticky="e")
-    max_spectra_entry = tk.Entry(root, textvariable=max_spectra_var, width=10)
+    tk.Label(frame, text="Spectra Max:").grid(row=4, column=0, padx=10, pady=5, sticky="e")
+    max_spectra_entry = tk.Entry(frame, textvariable=max_spectra_var, width=10)
     max_spectra_entry.grid(row=4, column=1, padx=10, pady=5, sticky="w")
 
     # Peak display checkbox
     peak_display_var = tk.BooleanVar()
-    peak_display_checkbox = tk.Checkbutton(root, text="Show Peak Values", variable=peak_display_var)
+    peak_display_checkbox = tk.Checkbutton(frame, text="Show Peak Values", variable=peak_display_var)
     peak_display_checkbox.grid(row=3, column=2, padx=10, pady=5, sticky="w")
 
     # Normalize checkbox
     normalize_var = tk.BooleanVar()
-    normalize_checkbox = tk.Checkbutton(root, text="Normalize", variable=normalize_var)
+    normalize_checkbox = tk.Checkbutton(frame, text="Normalize", variable=normalize_var)
     normalize_checkbox.grid(row=4, column=2, padx=10, pady=5, sticky="w")
 
     # Normalize_all_to_one checkbox
     normalize_all_var = tk.BooleanVar()
-    normalize_all_checkbox = tk.Checkbutton(root, text="Normalize all to 1", variable=normalize_all_var)
+    normalize_all_checkbox = tk.Checkbutton(frame, text="Normalize all to 1", variable=normalize_all_var)
     normalize_all_checkbox.grid(row=4, column=3, padx=10, pady=5, sticky="w")
+
+    # Normalize by group checkbox
+    normalize_by_group_var = tk.BooleanVar()
+    normalize_by_group_checkbox = tk.Checkbutton(frame, text="Normalize by group", variable=normalize_by_group_var)
+    normalize_by_group_checkbox.grid(row=5, column=3, padx=10, pady=5, sticky="w")
 
     # Denoise checkbox
     denoise_var = tk.BooleanVar()
-    denoise_checkbox = tk.Checkbutton(root, text="Denoise", variable=denoise_var)
+    denoise_checkbox = tk.Checkbutton(frame, text="Denoise", variable=denoise_var)
     denoise_checkbox.grid(row=3, column=3, padx=10, pady=5, sticky="w")
 
     # Name field
-    tk.Label(root, text="Output Name:").grid(row=5, column=0, padx=10, pady=5, sticky="e")
-    name_entry = tk.Entry(root, textvariable=name_var, width=40)
+    tk.Label(frame, text="Output Name:").grid(row=5, column=0, padx=10, pady=5, sticky="e")
+    name_entry = tk.Entry(frame, textvariable=name_var, width=40)
     name_entry.grid(row=5, column=1, padx=10, pady=5, columnspan=2)
 
     # Submit button
-    submit_button = ttk.Button(root, text="Submit", command=submit)
+    submit_button = ttk.Button(frame, text="Submit", command=submit)
     submit_button.grid(row=6, column=0, columnspan=3, pady=10)
 
-    # Set initial state for autofluorescence
+    # GUI Layout
+    # tk.Label(frame, text="Spectra:").grid(row=0, column=0, padx=10, pady=5, sticky="e")
+    # solution_dropdown = ttk.Combobox(frame, textvariable=solution_var, state="readonly", postcommand=updatelist)
+    # solution_dropdown["values"] = [f for f in fluorophors.keys()]
+    # solution_dropdown.grid(row=0, column=1, padx=10, pady=5)
+    # solution_dropdown.bind("<<ComboboxSelected>>", on_solution_change)
+
+    # ttk.Button(frame, text="Add new Spectrometer", command=add_fluorophor).grid(row=0, column=2, pady=10)
+    # ttk.Button(frame, text="Rename Files", command=rename_files).grid(row=0, column=3, pady=10)
+
+    # tk.Label(frame, text="Input Files:").grid(row=1, column=0, padx=10, pady=5, sticky="e")
+    # ttk.Button(frame, text="Select Files", command=select_input_files).grid(row=1, column=1, padx=10, pady=5)
+    # tk.Entry(frame, textvariable=input_files_var, state="readonly", width=40).grid(row=1, column=2, padx=10, pady=5)
+    # ttk.Button(frame, text="Clear", command=clear_input_files).grid(row=1, column=3, padx=10, pady=5)
+
+    # tk.Label(frame, text="Autofluorescence:").grid(row=2, column=0, padx=10, pady=5, sticky="e")
+    # ttk.Button(frame, text="Select Files", command=select_autofluorescence_files).grid(row=2, column=1, padx=10, pady=5)
+    # tk.Entry(frame, textvariable=autofluorescence_var, state="disable", width=40).grid(row=2, column=2, padx=10, pady=5)
+    # ttk.Button(frame, text="Clear", command=clear_autofluorescence_files).grid(row=2, column=3, padx=10, pady=5)
+
+    # tk.Label(frame, text="Spectra Min:").grid(row=3, column=0, padx=10, pady=5, sticky="e")
+    # tk.Entry(frame, textvariable=min_spectra_var, width=10).grid(row=3, column=1, padx=10, pady=5, sticky="w")
+    # tk.Label(frame, text="Spectra Max:").grid(row=4, column=0, padx=10, pady=5, sticky="e")
+    # tk.Entry(frame, textvariable=max_spectra_var, width=10).grid(row=4, column=1, padx=10, pady=5, sticky="w")
+
+    # tk.Checkbutton(frame, text="Show Peak Values", variable=peak_display_var).grid(row=3, column=2, padx=10, pady=5, sticky="w")
+    # tk.Checkbutton(frame, text="Normalize", variable=normalize_var).grid(row=4, column=2, padx=10, pady=5, sticky="w")
+    # tk.Checkbutton(frame, text="Normalize all to 1", variable=normalize_all_var).grid(row=4, column=3, padx=10, pady=5, sticky="w")
+    # tk.Checkbutton(frame, text="Normalize by group", variable=normalize_by_group_var).grid(row=5, column=3, padx=10, pady=5, sticky="w")
+    # tk.Checkbutton(frame, text="Denoise", variable=denoise_var).grid(row=3, column=3, padx=10, pady=5, sticky="w")
+
+    # tk.Label(frame, text="Output Name:").grid(row=5, column=0, padx=10, pady=5, sticky="e")
+    # tk.Entry(frame, textvariable=name_var, width=40).grid(row=5, column=1, padx=10, pady=5, columnspan=2)
+
+    # ttk.Button(frame, text="Submit", command=submit).grid(row=6, column=0, columnspan=3, pady=10)
+
     on_solution_change(None)
 
-    # Start the application
+    def on_resize(event):
+        container.update_scrollbar_visibility(threshold_height=400)
+
+    root.bind("<Configure>", on_resize)
     root.mainloop()
-    
