@@ -449,7 +449,7 @@ def process_files(solution: str, input_files: str, autofluorescence_files: str, 
     plt.figure(figsize=(20,14))
     for measurement in data:
         try:
-            line = plt.plot(measurement.wave, measurement.value+cumulative_height[:len(measurement.wave)], label=measurement.alias)
+            line = plt.plot(measurement.wave, measurement.value+cumulative_height[:len(measurement.wave)], label=measurement.alias, linewidth=2.5)
             # print(f"line type {type(line)} \n the line is {line[0].get_color()}")
             color = line[0].get_color()
             if show_peaks:
@@ -465,7 +465,7 @@ def process_files(solution: str, input_files: str, autofluorescence_files: str, 
                 # print(f"the lenghts are {len(measurement.wave[peaks])} {len(h)} {len(label)}")
                 plt.scatter(measurement.wave[peaks], h, color=color)
                 for i,p in enumerate(peaks):
-                    plt.text(measurement.wave[p], h[i], label[i], fontsize=16, color=color)
+                    plt.text(measurement.wave[p], h[i], label[i], fontsize=24, color=color)
         except ValueError:
             messagebox.showerror("Error", "Please adjust the domain to be plotted !")
         
@@ -483,24 +483,27 @@ def process_files(solution: str, input_files: str, autofluorescence_files: str, 
             cumulative_height += 1.2 * max_deplacement  # Update cumulative height for next spectrum
     
     if solution in ["SERS_BWTeK", "SERS_Avantes","SERS_ReniShaw"]:
-        plt.xlabel("Raman Shift [cm-1]", fontsize = 18)
-        plt.ylabel("Normalized Intensity [a.u]", fontsize = 18)
+        plt.xlabel("Raman Shift [cm-1]", fontsize = 30)
+        plt.ylabel("Normalized Intensity [a.u]", fontsize = 30)
         # plt.gca().set_yticklabels([])
     elif solution == "UV-Vis":
-        plt.xlabel("Wavelength [nm]", fontsize = 18)
-        plt.ylabel("Intensity [a.u]", fontsize = 18)
+        plt.xlabel("Wavelength [nm]", fontsize = 30)
+        plt.ylabel("Intensity [a.u]", fontsize = 30)
     elif solution == "FT-IR":
-        plt.xlabel("Wavenumber [cm-1]", fontsize = 18)
-        plt.ylabel("Transmittance [a.u]", fontsize = 18)
+        plt.xlabel("Wavenumber [cm-1]", fontsize = 30)
+        plt.ylabel("Transmittance [a.u]", fontsize = 30)
         plt.yticks([])
     else:
-        plt.xlabel("Wavelength [nm]", fontsize = 18)
-        plt.ylabel("Intensity [a.u]", fontsize = 18)
-    plt.xticks(fontsize=16)
-    plt.yticks(fontsize=16)
+        plt.xlabel("Wavelength [nm]", fontsize = 30)
+        plt.ylabel("Intensity [a.u]", fontsize = 30)
+    plt.xticks(fontsize=26)
+    plt.yticks(fontsize=26)
     # plt.tight_layout()
     plt.tick_params(axis='both', direction='in')
-    plt.legend(fontsize=18, loc='upper right', frameon=True, framealpha=0.5, edgecolor="black")
+    leg = plt.legend(fontsize=26, loc='upper right', frameon=True, framealpha=0.5, edgecolor="black")
+    for l in leg.get_lines():
+        l.set_linewidth(2.5)
+
     # plt.legend(fontsize=18, loc='upper right', frameon=True, framealpha=0.5, edgecolor="black",bbox_to_anchor=(1.1, 1))
     # plt.show()
     # plt.savefig(f"{basedir}/plot_{output_name}.png", bbox_inches="tight")
