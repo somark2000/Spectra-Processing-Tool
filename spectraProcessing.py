@@ -67,7 +67,7 @@ def clear_input_files():
     input_files_var.set("")
     input_files_entry.delete(0, tk.END)  # Clear the entry field
     if len(alias_entries.values())> 0:
-        for entry in alias_entries:
+        for entry in alias_entries.values():
             entry.destroy()
         alias_entries.clear()
         submit_button.grid(row=7, column=0, columnspan=3, pady=10)
@@ -99,7 +99,7 @@ def delete_alias_entry(entry):
 # Select input files
 def select_input_files():
     files = filedialog.askopenfilenames(title="Select Input Files",filetypes=[("Text files", "*.txt")])
-    input_files_var.set( input_files_var.get()+ ", "+", ".join(files)[:-2])
+    input_files_var.set( input_files_var.get()+ ", "+", ".join(files))
     file_paths = [x.strip() for x in input_files_var.get().split(',') if x.strip() != ""]
     print("filepaths: ",file_paths)
     
@@ -132,6 +132,7 @@ def select_input_files():
 
     submit_button.grid(row=7+len(grouped_files), column=0, columnspan=3, pady=10)
     container.update_scrollbar_visibility(threshold_height=400)
+    on_resize()
 
 
 # Select autofluorescence files
@@ -184,7 +185,100 @@ def add_fluorophor():
     # Submit button
     new_submit_button = ttk.Button(newWindow, text="Save", command=lambda: save_new(new_name_var,check_var))
     new_submit_button.grid(row=2, column=0, columnspan=3, pady=10)
+
+class pHMeasurement:
+    def __init__(self, name, alias, ph):
+        self.name = name
+        self.alias = alias
+        self.ph = ph
     
+# Select measurements to be compared 
+def select_measurement_files(newWindow: tk.Toplevel,alias: dict, new_submit_button: ttk.Button, new_name_var: tk.StringVar):
+    files = filedialog.askopenfilenames(title="Select Measurement Files",filetypes=[("CSV files", "*.csv")])
+    file_paths = [x.strip() for x in files if x.strip() != ""]
+    new_name_var.set(", ".join(files))
+    
+    for i,file_path in enumerate(file_paths):
+        basename = "".join(file_path.split('/')[-1]).split('.')[0] # Extract basename (e.g., 'a', 'b')
+        entry_label = tk.Label(newWindow, text=f"{basename}: ")
+        entry_label.grid(row=2+i, column=0, padx=10, pady=5, sticky="e")
+        entry_entry = tk.Entry(newWindow, width=80)
+        entry_entry.grid(row=2+i, column=1, padx=10, pady=5, columnspan=2)
+        entry_ph_label = tk.Label(newWindow, text="pH: ")
+        entry_ph_label.grid(row=2+i, column=3, padx=10, pady=5, sticky="e")
+        entry_ph_entry = tk.Entry(newWindow, width=10)
+        entry_ph_entry.insert(0, "7.0")
+        entry_ph_entry.grid(row=2+i, column=4, padx=10, pady=5)
+        alias[basename] = pHMeasurement(file_path,entry_entry,entry_ph_entry)
+    
+    # new_submit_button.grid(row=3+len(files), column=0, pady=10)
+
+def save_ph(alias: dict, output_name: str = "output"):
+    base_dir = find_folder("Spectra Processing")
+    base_dir=os.path.join(base_dir, output_name)
+    try:
+        os.mkdir(base_dir)
+    except OSError:
+        pass
+    
+    # aliases = {filename: entry.entry.get() for filename, entry in alias.items()}
+    # iterate over the dictionary 
+    max_norom=1
+    md = defaultdict(list)
+    for key, value in alias.items():
+        print(f"{key} : {value.alias.get()} {value.ph.get()}")
+        with open(value.name, "r") as f:
+            lines = f.readlines()
+            data_lines = lines[1:]
+            if value.alias.get() == "normalize": max_norom = float(data_lines[0].strip().split(",")[2])
+            for line in data_lines:
+                data = line.strip().split(",")
+                md[data[0]].append((data[2],data[3],value.ph.get()))
+
+    plt.figure(figsize=(20,14))
+    for key, value in md.items():
+        intensity = [float(x[0])/max_norom for x in value]
+        std = [float(x[1])/max_norom for x in value]
+        ph = [float(x[2]) for x in value]
+        plt.scatter(ph,intensity,label=key)
+        plt.errorbar(ph, intensity, yerr=std, uplims=True, lolims=True, fmt='o', capsize=5, elinewidth=2, capthick=2, alpha=0.5)
+        plt.xlabel("pH", fontsize = 30)
+        plt.ylabel("Intensity [a.u]", fontsize = 30)
+        plt.xticks(fontsize=26)
+        plt.yticks(fontsize=26)
+        plt.tick_params(axis='both', direction='in')
+        leg = plt.legend(fontsize=26, frameon=True, framealpha=0.5, edgecolor="black")
+        for l in leg.get_lines():
+            l.set_linewidth(2.5)
+    plt.savefig(f"{base_dir}/pH_plot_{output_name}.png")
+
+
+def pH_plot():
+    # Toplevel object which will 
+    # be treated as a new window
+    newWindow = tk.Toplevel(root)
+    newWindow.title("Create pH plot")
+
+    # Variables
+    new_name_var = tk.StringVar()
+    name_var = tk.StringVar()
+    alias = {}
+ 
+    # Name field
+    tk.Label(newWindow, text="Measurements to be compared:").grid(row=0, column=0, padx=10, pady=5, sticky="e")
+    ttk.Button(newWindow, text="Select Files",command=lambda: select_measurement_files(newWindow,alias, new_submit_button, new_name_var)).grid(row=0, column=2, padx=10, pady=5)
+    name_entry = tk.Entry(newWindow, textvariable=new_name_var, width=40, state="readonly")
+    name_entry.grid(row=0, column=1, padx=10, pady=5)
+
+    tk.Label(newWindow, text="Output folder: ").grid(row=1, column=0, padx=10, pady=5, sticky="e")
+    output_name = tk.Entry(newWindow, textvariable=name_var, width=40)
+    output_name.grid(row=1, column=1, padx=10, pady=5)
+
+    # Submit button
+    new_submit_button = ttk.Button(newWindow, text="Save", command=lambda: save_ph(alias, output_name.get()))
+    new_submit_button.grid(row=1, column=2, pady=10)
+    # magic_button.config(command=lambda: select_measurement_files(name_entry, newWindow,alias, new_submit_button))
+
 # Find the folder with the given name in the user's Pictures directory
 def find_folder(folder_name):
   documents_path = os.path.join(os.path.expanduser("~"), "Pictures")
@@ -429,16 +523,16 @@ def process_files(solution: str, input_files: str, autofluorescence_files: str, 
 
     # Save relevant data to a CSV file
     with open(f'{basedir}/max_values_{output_name}.csv', 'w', newline='', encoding='utf-8') as csvfile:
-        fieldnames = ['Name ', 'Max Wave ', 'Max Value ', 'Max Std ']
+        fieldnames = ['Name', 'Max Wave', 'Max Value', 'Max Std']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
         # save data
         for measurement in data:
             max_value, max_wave, max_std = measurement.find_max()
-            writer.writerow({'Name ': measurement.alias,
-                          'Max Value ': max_value,
-                          'Max Wave ': max_wave,
-                          'Max Std ': max_std})
+            writer.writerow({'Name': measurement.alias,
+                          'Max Value': max_value,
+                          'Max Wave': max_wave,
+                          'Max Std': max_std})
     
     # Plot the data
     maxlen=0
@@ -508,6 +602,7 @@ def process_files(solution: str, input_files: str, autofluorescence_files: str, 
     # plt.show()
     # plt.savefig(f"{basedir}/plot_{output_name}.png", bbox_inches="tight")
     plt.savefig(f"{basedir}/plot_{output_name}.png")
+    plt.close()
 
     # if solution not in ("UV-Vis","FT-IR","SERS_BWTeK"):
     #     plt.clf()
@@ -621,7 +716,8 @@ class AliasEntry():
         self.entry.destroy()
         self.button.destroy()
     
-
+def on_resize():
+        container.update_scrollbar_visibility(threshold_height=400)
 
 if __name__ == "__main__":
     root = tk.Tk()
@@ -721,7 +817,11 @@ if __name__ == "__main__":
     # Name field
     tk.Label(frame, text="Output Name:").grid(row=5, column=0, padx=10, pady=5, sticky="e")
     name_entry = tk.Entry(frame, textvariable=name_var, width=40)
-    name_entry.grid(row=5, column=1, padx=10, pady=5, columnspan=2)
+    name_entry.grid(row=5, column=1, padx=10, pady=5)
+
+    # pH button
+    pH_button = ttk.Button(frame, text="pH Plotting", command=pH_plot)
+    pH_button.grid(row=5, column=2, padx=10, pady=5)
 
     # Submit button
     submit_button = ttk.Button(frame, text="Submit", command=submit)
@@ -765,8 +865,4 @@ if __name__ == "__main__":
 
     on_solution_change(None)
 
-    def on_resize(event):
-        container.update_scrollbar_visibility(threshold_height=400)
-
-    root.bind("<Configure>", on_resize)
     root.mainloop()
