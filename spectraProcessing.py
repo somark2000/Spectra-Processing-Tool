@@ -67,11 +67,9 @@ def clear_input_files():
     input_files_var.set("")
     input_files_entry.delete(0, tk.END)  # Clear the entry field
     if len(alias_entries.values())> 0:
-        for entry,entry_label in zip(alias_entries.values(),alias_entries_labels.values()):
+        for entry in alias_entries:
             entry.destroy()
-            entry_label.destroy()
         alias_entries.clear()
-        alias_entries_labels.clear()
         submit_button.grid(row=7, column=0, columnspan=3, pady=10)
 
 def clear_autofluorescence_files():
@@ -79,6 +77,24 @@ def clear_autofluorescence_files():
     autofluorescence_entry.config(state="disabled")
     autofluorescence_button.config(state="disabled")
     autofluorescence_entry.delete(0, tk.END)  # Clear the entry field
+
+def delete_alias_entry(entry):
+    # Remove the entry from the grid and the dictionary
+    entry.destroy()
+    print("the entry is ",entry.name)
+    alias_entries.pop(entry.name)
+    submit_button.grid(row=7+len(alias_entries), column=0, columnspan=3, pady=10)
+    container.update_scrollbar_visibility(threshold_height=400)
+
+    # Remove the entry from the input files variable
+    input_files = input_files_var.get().split(',')
+    print("input files before: ", input_files)
+    input_files = [x for x in input_files if entry.name not in x.strip()]
+    print("input files after: ", input_files)
+    input_files_var.set(",".join(input_files)[:-2])
+    print("input files after set: ", input_files_var.get())
+    # file_paths = [x.strip() for x in input_files_var.get().split(',') if x.strip() != ""]
+    # print("filepaths: ",file_paths)
 
 # Select input files
 def select_input_files():
@@ -96,21 +112,24 @@ def select_input_files():
     try:grouped_files.pop('')  # Remove empty keys if any
     except: pass
     
-    if len(alias_entries.values())> 0:
-        for entry,entry_label in zip(alias_entries.values(),alias_entries_labels.values()):
+    if len(alias_entries)> 0:
+        for entry in alias_entries.values():
             entry.destroy()
-            entry_label.destroy()
         alias_entries.clear()
-        alias_entries_labels.clear()
 
     for i,group in enumerate(grouped_files.keys()):
         entry_label = tk.Label(frame, text=f"{group.split('/')[-1]}: ")
         entry_label.grid(row=6+i, column=0, padx=10, pady=5, sticky="e")
-        entry = tk.Entry(frame, width=80)
-        entry.grid(row=6+i, column=1, padx=10, pady=5, columnspan=2)
+        entry_entry = tk.Entry(frame, width=80)
+        entry_entry.grid(row=6+i, column=1, padx=10, pady=5, columnspan=2)
+        entry_delete = ttk.Button(frame, text="Delete")
+        entry_delete.grid(row=6+i, column=3, padx=10, pady=5, sticky="w")
+        
         # Store entry widget in dictionary with filename as key
+        entry = AliasEntry(entry_label, entry_entry, entry_delete, group)
+        entry.button.config(command=lambda e=entry: delete_alias_entry(e)) # Pass the newly created entry object to the command
         alias_entries[group] = entry
-        alias_entries_labels[group] = entry_label
+
     submit_button.grid(row=7+len(grouped_files), column=0, columnspan=3, pady=10)
     container.update_scrollbar_visibility(threshold_height=400)
 
@@ -188,7 +207,7 @@ def submit():
     else: min_spectra = float(min_spectra)
     if max_spectra == "": max_spectra = 0.0
     else: max_spectra = float(max_spectra)
-    aliases = {filename: entry.get() for filename, entry in alias_entries.items()}
+    aliases = {filename: entry.entry.get() for filename, entry in alias_entries.items()}
     peaks = peak_display_var.get()
     normalize = normalize_var.get()
     normalize_all = normalize_all_var.get()
@@ -587,6 +606,20 @@ class ScrollableFrame(ttk.Frame):
         else:
             self.scrollbar.pack_forget()
 
+class AliasEntry():
+    def __init__(self, label: tk.Label, entry: tk.Entry, button: ttk.Button, name: str):
+        self.label = label
+        self.entry = entry
+        self.button = button
+        self.name = name
+    
+    def destroy(self):
+        self.label.destroy()
+        self.entry.destroy()
+        self.button.destroy()
+    
+
+
 if __name__ == "__main__":
     root = tk.Tk()
     root.title("Spectra processing")
@@ -611,7 +644,6 @@ if __name__ == "__main__":
     denoise_var = tk.BooleanVar()
     fluorophors = {"": "False"}
     alias_entries = {}
-    alias_entries_labels = {}
 
     read_fluorophor(fluorophors)
     
