@@ -99,7 +99,7 @@ def delete_alias_entry(entry):
 # Select input files
 def select_input_files():
     files = filedialog.askopenfilenames(title="Select Input Files",filetypes=[("Text files", "*.txt")])
-    input_files_var.set( ", ".join(files) + ", " + input_files_var.get())
+    input_files_var.set( input_files_var.get()+ ", "+", ".join(files)[:-2])
     file_paths = [x.strip() for x in input_files_var.get().split(',') if x.strip() != ""]
     print("filepaths: ",file_paths)
     
@@ -429,16 +429,16 @@ def process_files(solution: str, input_files: str, autofluorescence_files: str, 
 
     # Save relevant data to a CSV file
     with open(f'{basedir}/max_values_{output_name}.csv', 'w', newline='', encoding='utf-8') as csvfile:
-        fieldnames = ['Name', 'Max Wave', 'Max Value', 'Max Std']
+        fieldnames = ['Name ', 'Max Wave ', 'Max Value ', 'Max Std ']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
         # save data
         for measurement in data:
             max_value, max_wave, max_std = measurement.find_max()
-            writer.writerow({'Name': measurement.alias,
-                          'Max Value': max_value,
-                          'Max Wave': max_wave,
-                          'Max Std': max_std})
+            writer.writerow({'Name ': measurement.alias,
+                          'Max Value ': max_value,
+                          'Max Wave ': max_wave,
+                          'Max Std ': max_std})
     
     # Plot the data
     maxlen=0
