@@ -240,8 +240,9 @@ def save_ph(alias: dict, output_name: str = "output"):
         intensity = [float(x[0])/max_norom for x in value]
         std = [float(x[1])/max_norom for x in value]
         ph = [float(x[2]) for x in value]
+        print(f"the values are {intensity} {std} {ph}")
         plt.scatter(ph,intensity,label=key)
-        plt.errorbar(ph, intensity, yerr=std, uplims=True, lolims=True, fmt='o', capsize=5, elinewidth=2, capthick=2, alpha=0.5)
+        plt.errorbar(ph, intensity, yerr=std, fmt='o',  markersize=8, capsize=10)
         plt.xlabel("pH", fontsize = 30)
         plt.ylabel("Intensity [a.u]", fontsize = 30)
         plt.xticks(fontsize=26)
