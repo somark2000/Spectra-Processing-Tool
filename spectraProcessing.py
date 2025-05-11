@@ -241,16 +241,16 @@ def save_ph(alias: dict, output_name: str = "output"):
         std = [float(x[1])/max_norom for x in value]
         ph = [float(x[2]) for x in value]
         print(f"the values are {intensity} {std} {ph}")
-        plt.scatter(ph,intensity,label=key)
-        plt.errorbar(ph, intensity, yerr=std, fmt='o',  markersize=8, capsize=10)
-        plt.xlabel("pH", fontsize = 30)
-        plt.ylabel("Intensity [a.u]", fontsize = 30)
-        plt.xticks(fontsize=26)
-        plt.yticks(fontsize=26)
+        plt.scatter(ph,intensity,label=key, s=400)
+        plt.errorbar(ph, intensity, yerr=std, fmt='o',  markersize=20, capsize=22)
+        plt.xlabel("pH", fontsize = 38)
+        plt.ylabel("Intensity [a.u]", fontsize = 38)
+        plt.xticks(fontsize=30)
+        plt.yticks(fontsize=30)
         plt.tick_params(axis='both', direction='in')
-        leg = plt.legend(fontsize=26, frameon=True, framealpha=0.5, edgecolor="black")
+        leg = plt.legend(fontsize=32, frameon=True, framealpha=0.5, edgecolor="black")
         for l in leg.get_lines():
-            l.set_linewidth(2.5)
+            l.set_linewidth(4.5)
     plt.savefig(f"{base_dir}/pH_plot_{output_name}.png")
 
 
