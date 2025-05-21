@@ -314,9 +314,9 @@ def save_ph_cont(md: dict, fits: dict, max_norom:float, base_dir:str, output_nam
         plt.xticks(fontsize=26)
         plt.yticks(fontsize=26)
         plt.tick_params(axis='both', direction='in')
-        leg = plt.legend(fontsize=26, frameon=True, framealpha=0.5, edgecolor="black")
+        leg = plt.legend(fontsize=32, frameon=True, framealpha=0.5, edgecolor="black")
         for l in leg.get_lines():
-            l.set_linewidth(2.5)
+            l.set_linewidth(4.5)
     plt.savefig(f"{base_dir}/pH_plot_{output_name}.png")
     f.close()
 

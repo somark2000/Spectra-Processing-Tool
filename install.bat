@@ -71,11 +71,13 @@ if %errorlevel% == 1 (
 
 set "target=%USERPROFILE%\Documents\Spectra Processing\Executable\spectraProcessing.exe"  
 set "shortcut=%USERPROFILE%\Desktop\spectraProcessing.lnk" 
+set "shortcut_OneDrive=%USERPROFILE%\OneDrive - Universitatea Babeş-Bolyai\Desktop\spectraProcessing.lnk"
 set "working_dir=%USERPROFILE%\Documents\Spectra Processing\Executable\"
 
 @REM mklink /H "%shortcut%" "%target%"
 @REM powershell  -Command "Start-Process -Verb RunAs powerhell -Command cd \\\"%working_dir%\\\" New-Item -ItemType SymbolicLink -Path '%shortcut%' -Target '%target%'"
 powershell "$s=(New-Object -COM WScript.Shell).CreateShortcut('%shortcut%');$s.TargetPath='%target%'; $s.Save()"
+powershell "$s=(New-Object -COM WScript.Shell).CreateShortcut('%shortcut_OneDrive%');$s.TargetPath='%target%'; $s.Save()"
 
 @REM set SCRIPT="%TEMP%\%RANDOM%-%RANDOM%-%RANDOM%-%RANDOM%.vbs"
 @REM echo Set oWS = WScript.CreateObject("WScript.Shell") >> %SCRIPT%
