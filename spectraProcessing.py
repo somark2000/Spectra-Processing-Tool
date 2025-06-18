@@ -598,18 +598,18 @@ def process_files(solution: str, input_files: str, autofluorescence_files: str, 
     df.to_excel(f'{basedir}/output_{output_name}.xlsx', index=False)
     print(f"Data exported to {basedir}/output_{output_name}.xlsx")
 
-    # Save relevant data to a CSV file
-    with open(f'{basedir}/max_values_{output_name}.csv', 'w', newline='', encoding='utf-8') as csvfile:
-        fieldnames = ['Name', 'Max Wave', 'Max Value', 'Max Std']
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-        writer.writeheader()
-        # save data
-        for measurement in data:
-            max_value, max_wave, max_std = measurement.find_max()
-            writer.writerow({'Name': measurement.alias,
-                          'Max Value': max_value,
-                          'Max Wave': max_wave,
-                          'Max Std': max_std})
+    # # Save relevant data to a CSV file
+    # with open(f'{basedir}/max_values_{output_name}.csv', 'w', newline='', encoding='utf-8') as csvfile:
+    #     fieldnames = ['Name', 'Max Wave', 'Max Value', 'Max Std']
+    #     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+    #     writer.writeheader()
+    #     # save data
+    #     for measurement in data:
+    #         max_value, max_wave, max_std = measurement.find_max()
+    #         writer.writerow({'Name': measurement.alias,
+    #                       'Max Value': max_value,
+    #                       'Max Wave': max_wave,
+    #                       'Max Std': max_std})
     
     # Plot the data
     maxlen=0
@@ -617,12 +617,14 @@ def process_files(solution: str, input_files: str, autofluorescence_files: str, 
         if len(d.wave)>maxlen: maxlen=len(d.wave)
     cumulative_height = np.zeros(maxlen)
     max_deplacement = 0
+    colors = []
     plt.figure(figsize=(20,14))
     for measurement in data:
         try:
             line = plt.plot(measurement.wave, measurement.value+cumulative_height[:len(measurement.wave)], label=measurement.alias, linewidth=2.5)
             # print(f"line type {type(line)} \n the line is {line[0].get_color()}")
             color = line[0].get_color()
+            colors.append(color)
             if show_peaks:
                 # peaks = np.argmax(measurement.value)
                 width = 30 # width of the peak
@@ -654,24 +656,26 @@ def process_files(solution: str, input_files: str, autofluorescence_files: str, 
             cumulative_height += 1.2 * max_deplacement  # Update cumulative height for next spectrum
     
     if solution in ["SERS_BWTeK", "SERS_Avantes","SERS_ReniShaw"]:
-        plt.xlabel("Raman Shift [cm-1]", fontsize = 30)
-        plt.ylabel("Normalized Intensity [a.u]", fontsize = 30)
+        plt.xlabel("Raman Shift [cm-1]", fontsize = 35)
+        plt.ylabel("Normalized intensity [a.u]", fontsize = 35)
         # plt.gca().set_yticklabels([])
     elif solution == "UV-Vis":
-        plt.xlabel("Wavelength [nm]", fontsize = 30)
-        plt.ylabel("Intensity [a.u]", fontsize = 30)
+        plt.xlabel("Wavelength [nm]", fontsize = 35)
+        plt.ylabel("Intensity [a.u]", fontsize = 35)
+        if normalize or normalize_all:
+            plt.ylabel("Normalized intensity [a.u]", fontsize = 35)
     elif solution == "FT-IR":
-        plt.xlabel("Wavenumber [cm-1]", fontsize = 30)
-        plt.ylabel("Transmittance [a.u]", fontsize = 30)
+        plt.xlabel("Wavenumber [cm-1]", fontsize = 35)
+        plt.ylabel("Transmittance [a.u]", fontsize = 35)
         plt.yticks([])
     else:
-        plt.xlabel("Wavelength [nm]", fontsize = 30)
-        plt.ylabel("Intensity [a.u]", fontsize = 30)
-    plt.xticks(fontsize=26)
-    plt.yticks(fontsize=26)
+        plt.xlabel("Wavelength [nm]", fontsize = 35)
+        plt.ylabel("Intensity [a.u]", fontsize = 35)
+    plt.xticks(fontsize=30)
+    plt.yticks(fontsize=30)
     # plt.tight_layout()
     plt.tick_params(axis='both', direction='in')
-    leg = plt.legend(fontsize=26, loc='upper right', frameon=True, framealpha=0.5, edgecolor="black")
+    leg = plt.legend(fontsize=28, loc='upper right', frameon=True, framealpha=0.5, edgecolor="black")
     for l in leg.get_lines():
         l.set_linewidth(2.5)
 
@@ -680,6 +684,20 @@ def process_files(solution: str, input_files: str, autofluorescence_files: str, 
     # plt.savefig(f"{basedir}/plot_{output_name}.png", bbox_inches="tight")
     plt.savefig(f"{basedir}/plot_{output_name}.png")
     plt.close()
+
+    # Save relevant data to a CSV file
+    with open(f'{basedir}/max_values_{output_name}.csv', 'w', newline='', encoding='utf-8') as csvfile:
+        fieldnames = ['Name', 'Max Wave', 'Max Value', 'Max Std', 'Color']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+        # save data
+        for measurement,color in zip(data,colors):
+            max_value, max_wave, max_std = measurement.find_max()
+            writer.writerow({'Name': measurement.alias,
+                          'Max Value': max_value,
+                          'Max Wave': max_wave,
+                          'Max Std': max_std,
+                          'Color': color})
 
     # if solution not in ("UV-Vis","FT-IR","SERS_BWTeK"):
     #     plt.clf()
