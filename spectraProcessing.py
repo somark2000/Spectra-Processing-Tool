@@ -675,7 +675,8 @@ def process_files(solution: str, input_files: str, autofluorescence_files: str, 
     plt.yticks(fontsize=30)
     # plt.tight_layout()
     plt.tick_params(axis='both', direction='in')
-    leg = plt.legend(fontsize=28, loc='upper right', frameon=True, framealpha=0.5, edgecolor="black")
+    leg = plt.legend(fontsize=28, frameon=True, framealpha=0.5, edgecolor="black")
+    # leg = plt.legend(fontsize=28, loc='upper right', frameon=True, framealpha=0.5, edgecolor="black")
     for l in leg.get_lines():
         l.set_linewidth(2.5)
 
