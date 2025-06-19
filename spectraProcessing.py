@@ -11,6 +11,7 @@ import numpy as np
 from collections import defaultdict
 import pywt
 from scipy.signal import savgol_filter
+from scipy.optimize import curve_fit
 
 
 class Measurement:
@@ -201,19 +202,19 @@ def select_measurement_files(newWindow: tk.Toplevel,alias: dict, new_submit_butt
     for i,file_path in enumerate(file_paths):
         basename = "".join(file_path.split('/')[-1]).split('.')[0] # Extract basename (e.g., 'a', 'b')
         entry_label = tk.Label(newWindow, text=f"{basename}: ")
-        entry_label.grid(row=2+i, column=0, padx=10, pady=5, sticky="e")
+        entry_label.grid(row=3+i, column=0, padx=10, pady=5, sticky="e")
         entry_entry = tk.Entry(newWindow, width=80)
-        entry_entry.grid(row=2+i, column=1, padx=10, pady=5, columnspan=2)
+        entry_entry.grid(row=3+i, column=1, padx=10, pady=5, columnspan=2)
         entry_ph_label = tk.Label(newWindow, text="pH: ")
-        entry_ph_label.grid(row=2+i, column=3, padx=10, pady=5, sticky="e")
+        entry_ph_label.grid(row=3+i, column=3, padx=10, pady=5, sticky="e")
         entry_ph_entry = tk.Entry(newWindow, width=10)
         entry_ph_entry.insert(0, "7.0")
-        entry_ph_entry.grid(row=2+i, column=4, padx=10, pady=5)
+        entry_ph_entry.grid(row=3+i, column=4, padx=10, pady=5)
         alias[basename] = pHMeasurement(file_path,entry_entry,entry_ph_entry)
     
     # new_submit_button.grid(row=3+len(files), column=0, pady=10)
 
-def save_ph(alias: dict, output_name: str = "output"):
+def save_ph(newWindow: tk.Toplevel, alias: dict, output_name: str = "output"):
     base_dir = find_folder("Spectra Processing")
     base_dir=os.path.join(base_dir, output_name)
     try:
@@ -235,23 +236,89 @@ def save_ph(alias: dict, output_name: str = "output"):
                 data = line.strip().split(",")
                 md[data[0]].append((data[2],data[3],value.ph.get()))
     
+    # Add a button to select interpolation method
+    interpolation_methods = ["none","polynomial_1st", "polynomial_2nd", "polynomial_3rd", "polynomial_4th", "polynomial_5th", "spline","logarithmic","exponential"]
+    fits = {}
+    displacement = 0
+    for i in md.values():
+        if len(i) > displacement:
+            displacement = len(i)
+            
+    displacement += 3
+    for i,key in  enumerate(md.keys()):
+        tk.Label(newWindow, text=f"Fit {key}: ").grid(row=displacement + i, column=0, padx=10, pady=5, sticky="e")
+        fit_dropdown = ttk.Combobox(newWindow, textvariable= tk.StringVar(), state="readonly")
+        fit_dropdown["values"] = interpolation_methods
+        fit_dropdown.grid(row=displacement + i, column=1, padx=10, pady=5)
+        fit_dropdown.current(0)  # Set default value
+        fits[key] = fit_dropdown
+    tk.Button(newWindow, text="continue",command=lambda: save_ph_cont(md, fits, max_norom,base_dir, output_name)).grid(row=displacement+1+len(md.keys()), column=0, padx=10, pady=5)
+    newWindow.update_idletasks()  # Update the window to ensure the new widgets are displayed
+
+def save_ph_cont(md: dict, fits: dict, max_norom:float, base_dir:str, output_name: str = "output"):
     plt.figure(figsize=(20,14))
+    f = open(f"{base_dir}/interpol_{output_name}.txt","w")
+    # Iterate over the dictionary and plot the data
     for key, value in md.items():
         intensity = [float(x[0])/max_norom for x in value]
         std = [float(x[1])/max_norom for x in value]
         ph = [float(x[2]) for x in value]
-        print(f"the values are {key} {intensity} {ph}")
-        plt.scatter(ph,intensity, label=key, s=400)
-        plt.errorbar(ph, intensity, yerr=std, fmt='o',  markersize=20, capsize=22)
-        plt.xlabel("pH", fontsize = 38)
-        plt.ylabel("Intensity [a.u]", fontsize = 38)
-        plt.xticks(fontsize=30)
-        plt.yticks(fontsize=30)
+        print(f"the values are {intensity} {std} {ph}")
+        s = plt.scatter(ph,intensity,label=key)
+        plt.errorbar(ph, intensity, yerr=std, fmt='o',  markersize=8, capsize=10)
+        
+        fit = fits[key].get()
+        # setup the fit
+        if fit == "polynomial_1st":
+            # z = np.polyfit(ph, intensity, 1)
+            z = curve_fit(lambda x, a, b: a*x + b, ph, intensity)
+            f.write(f"{key} {z[0][0]} {z[0][1]}\n")
+            plt.plot(ph, z[0][0]*np.array(ph) + z[0][1], label=f"{key} fit", color=s.get_facecolor())
+        elif fit == "polynomial_2nd":
+            # z = np.polyfit(ph, intensity, 2)
+            z = curve_fit(lambda x, a, b, c: a*x**2 + b*x + c, ph, intensity)
+            f.write(f"{key} {z[0][0]} {z[0][1]} {z[0][2]}\n")
+            plt.plot(ph, z[0][0]*np.array(ph)**2 + z[0][1]*np.array(ph) + z[0][2], label=f"{key} fit", color=s.get_facecolor())
+        elif fit == "polynomial_3rd":
+            # z = np.polyfit(ph, intensity, 3)
+            z = curve_fit(lambda x, a, b, c, d: a*x**3 + b*x**2 + c*x + d, ph, intensity)
+            f.write(f"{key} {z[0][0]} {z[0][1]} {z[0][2]} {z[0][3]}\n")
+            plt.plot(ph, z[0][0]*np.array(ph)**3 + z[0][1]*np.array(ph)**2 + z[0][2]*np.array(ph) + z[0][3], label=f"{key} fit", color=s.get_facecolor())
+        elif fit == "polynomial_4th":
+            # z = np.polyfit(ph, intensity, 4)
+            z = curve_fit(lambda x, a, b, c, d, e: a*x**4 + b*x**3 + c*x**2 + d*x + e, ph, intensity)
+            f.write(f"{key} {z[0][0]} {z[0][1]} {z[0][2]} {z[0][3]} {z[0][4]}\n")
+            plt.plot(ph, z[0][0]*np.array(ph)**4 + z[0][1]*np.array(ph)**3 + z[0][2]*np.array(ph)**2 + z[0][3]*np.array(ph) + z[0][4], label=f"{key} fit", color=s.get_facecolor())
+        elif fit == "polynomial_5th":
+            # z = np.polyfit(ph, intensity, 5)
+            z = curve_fit(lambda x, a, b, c, d, e, f: a*x**5 + b*x**4 + c*x**3 + d*x**2 + e*x + f, ph, intensity)
+            f.write(f"{key} {z[0][0]} {z[0][1]} {z[0][2]} {z[0][3]} {z[0][4]} {z[0][5]}\n")
+            plt.plot(ph, z[0][0]*np.array(ph)**5 + z[0][1]*np.array(ph)**4 + z[0][2]*np.array(ph)**3 + z[0][3]*np.array(ph)**2 + z[0][4]*np.array(ph) + z[0][5], label=f"{key} fit", color=s.get_facecolor())
+        elif fit == "spline":
+            pass
+        elif fit == "logarithmic":
+            # z = np.polyfit(np.log(ph), intensity, 1)
+            z = curve_fit(lambda x, a, b: a*np.log(x) + b, ph, intensity)
+            f.write(f"{key} {z[0][0]} {z[0][1]}\n")
+            plt.plot(ph, z[0][0]*np.log(np.array(ph)) + z[0][1], label=f"{key} fit", color=s.get_facecolor())
+        elif fit == "exponential":
+            # z = np.polyfit(ph, np.log(intensity), 1)
+            z = curve_fit(lambda x, a, b: a*np.exp(b*x), ph, intensity)
+            f.write(f"{key} {z[0][0]} {z[0][1]}\n")
+            plt.plot(ph, z[0][0]*np.exp(z[0][1]*np.array(ph)), label=f"{key} fit", color=s.get_facecolor())
+        else:
+            pass
+        
+        plt.xlabel("pH", fontsize = 30)
+        plt.ylabel("Intensity [a.u]", fontsize = 30)
+        plt.xticks(fontsize=26)
+        plt.yticks(fontsize=26)
         plt.tick_params(axis='both', direction='in')
         leg = plt.legend(fontsize=32, frameon=True, framealpha=0.5, edgecolor="black")
         for l in leg.get_lines():
             l.set_linewidth(4.5)
     plt.savefig(f"{base_dir}/pH_plot_{output_name}.png")
+    f.close()
 
 
 def pH_plot():
@@ -263,6 +330,7 @@ def pH_plot():
     # Variables
     new_name_var = tk.StringVar()
     name_var = tk.StringVar()
+    solution_var = tk.StringVar()
     alias = {}
  
     # Name field
@@ -275,10 +343,18 @@ def pH_plot():
     output_name = tk.Entry(newWindow, textvariable=name_var, width=40)
     output_name.grid(row=1, column=1, padx=10, pady=5)
 
+    # Add a button to select interpolation method
+    # interpolation_methods = ["none","polynomial_1st", "polynomial_2nd", "polynomial_3rd", "polynomial_4th", "polynomial_5th", "spline","logarithmic","exponential"]
+    # tk.Label(newWindow, text="Fit: ").grid(row=2, column=0, padx=10, pady=5, sticky="e")
+    # fit_dropdown = ttk.Combobox(newWindow, textvariable=solution_var, state="readonly")
+    # fit_dropdown["values"] = interpolation_methods
+    # fit_dropdown.grid(row=2, column=1, padx=10, pady=5)
+    # fit_dropdown.current(0)  # Set default value
+    
     # Submit button
-    new_submit_button = ttk.Button(newWindow, text="Save", command=lambda: save_ph(alias, output_name.get()))
+    new_submit_button = ttk.Button(newWindow, text="Save", command=lambda: save_ph(newWindow,alias, output_name.get()))
     new_submit_button.grid(row=1, column=2, pady=10)
-    # magic_button.config(command=lambda: select_measurement_files(name_entry, newWindow,alias, new_submit_button))
+
 
 # Find the folder with the given name in the user's Pictures directory
 def find_folder(folder_name):
@@ -332,8 +408,7 @@ def normalize_spectrum(intensities):
     return [intensity / max_intensity for intensity in intensities]
 
 # Process files and perform tasks
-def process_files(solution: str, input_files: str, autofluorescence_files: str, min_spectra: float, 
-                  max_spectra: float, output_name: str, basedir: str, aliases: list, show_peaks: bool, normalize: bool, normalize_all: bool, denoise: bool):
+def process_files(solution: str, input_files: str, autofluorescence_files: str, min_spectra: float, max_spectra: float, output_name: str, basedir: str, aliases: list, show_peaks: bool, normalize: bool, normalize_all: bool, denoise: bool):
     # Split the input files string into a list of file paths
     file_paths = input_files.split(',')
     file_paths = [x.strip() for x in file_paths if x.strip() != ""]
@@ -523,18 +598,18 @@ def process_files(solution: str, input_files: str, autofluorescence_files: str, 
     df.to_excel(f'{basedir}/output_{output_name}.xlsx', index=False)
     print(f"Data exported to {basedir}/output_{output_name}.xlsx")
 
-    # Save relevant data to a CSV file
-    with open(f'{basedir}/max_values_{output_name}.csv', 'w', newline='', encoding='utf-8') as csvfile:
-        fieldnames = ['Name', 'Max Wave', 'Max Value', 'Max Std']
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-        writer.writeheader()
-        # save data
-        for measurement in data:
-            max_value, max_wave, max_std = measurement.find_max()
-            writer.writerow({'Name': measurement.alias,
-                          'Max Value': max_value,
-                          'Max Wave': max_wave,
-                          'Max Std': max_std})
+    # # Save relevant data to a CSV file
+    # with open(f'{basedir}/max_values_{output_name}.csv', 'w', newline='', encoding='utf-8') as csvfile:
+    #     fieldnames = ['Name', 'Max Wave', 'Max Value', 'Max Std']
+    #     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+    #     writer.writeheader()
+    #     # save data
+    #     for measurement in data:
+    #         max_value, max_wave, max_std = measurement.find_max()
+    #         writer.writerow({'Name': measurement.alias,
+    #                       'Max Value': max_value,
+    #                       'Max Wave': max_wave,
+    #                       'Max Std': max_std})
     
     # Plot the data
     maxlen=0
@@ -542,12 +617,14 @@ def process_files(solution: str, input_files: str, autofluorescence_files: str, 
         if len(d.wave)>maxlen: maxlen=len(d.wave)
     cumulative_height = np.zeros(maxlen)
     max_deplacement = 0
+    colors = []
     plt.figure(figsize=(20,14))
     for measurement in data:
         try:
             line = plt.plot(measurement.wave, measurement.value+cumulative_height[:len(measurement.wave)], label=measurement.alias, linewidth=2.5)
             # print(f"line type {type(line)} \n the line is {line[0].get_color()}")
             color = line[0].get_color()
+            colors.append(color)
             if show_peaks:
                 # peaks = np.argmax(measurement.value)
                 width = 30 # width of the peak
@@ -587,7 +664,6 @@ def process_files(solution: str, input_files: str, autofluorescence_files: str, 
         plt.ylabel("Intensity [a.u]", fontsize = 35)
         if normalize or normalize_all:
             plt.ylabel("Normalized intensity [a.u]", fontsize = 35)
-
     elif solution == "FT-IR":
         plt.xlabel("Wavenumber [cm-1]", fontsize = 35)
         plt.ylabel("Transmittance [a.u]", fontsize = 35)
@@ -599,7 +675,8 @@ def process_files(solution: str, input_files: str, autofluorescence_files: str, 
     plt.yticks(fontsize=30)
     # plt.tight_layout()
     plt.tick_params(axis='both', direction='in')
-    leg = plt.legend(fontsize=28, loc='upper right', frameon=True, framealpha=0.5, edgecolor="black")
+    leg = plt.legend(fontsize=28, frameon=True, framealpha=0.5, edgecolor="black")
+    # leg = plt.legend(fontsize=28, loc='upper right', frameon=True, framealpha=0.5, edgecolor="black")
     for l in leg.get_lines():
         l.set_linewidth(2.5)
 
@@ -608,6 +685,20 @@ def process_files(solution: str, input_files: str, autofluorescence_files: str, 
     # plt.savefig(f"{basedir}/plot_{output_name}.png", bbox_inches="tight")
     plt.savefig(f"{basedir}/plot_{output_name}.png")
     plt.close()
+
+    # Save relevant data to a CSV file
+    with open(f'{basedir}/max_values_{output_name}.csv', 'w', newline='', encoding='utf-8') as csvfile:
+        fieldnames = ['Name', 'Max Wave', 'Max Value', 'Max Std', 'Color']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+        # save data
+        for measurement,color in zip(data,colors):
+            max_value, max_wave, max_std = measurement.find_max()
+            writer.writerow({'Name': measurement.alias,
+                          'Max Value': max_value,
+                          'Max Wave': max_wave,
+                          'Max Std': max_std,
+                          'Color': color})
 
     # if solution not in ("UV-Vis","FT-IR","SERS_BWTeK"):
     #     plt.clf()
