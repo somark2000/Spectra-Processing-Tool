@@ -234,14 +234,14 @@ def save_ph(alias: dict, output_name: str = "output"):
             for line in data_lines:
                 data = line.strip().split(",")
                 md[data[0]].append((data[2],data[3],value.ph.get()))
-
+    
     plt.figure(figsize=(20,14))
     for key, value in md.items():
         intensity = [float(x[0])/max_norom for x in value]
         std = [float(x[1])/max_norom for x in value]
         ph = [float(x[2]) for x in value]
-        print(f"the values are {intensity} {std} {ph}")
-        plt.scatter(ph,intensity,label=key, s=400)
+        print(f"the values are {key} {intensity} {ph}")
+        plt.scatter(ph,intensity, label=key, s=400)
         plt.errorbar(ph, intensity, yerr=std, fmt='o',  markersize=20, capsize=22)
         plt.xlabel("pH", fontsize = 38)
         plt.ylabel("Intensity [a.u]", fontsize = 38)
@@ -332,7 +332,8 @@ def normalize_spectrum(intensities):
     return [intensity / max_intensity for intensity in intensities]
 
 # Process files and perform tasks
-def process_files(solution: str, input_files: str, autofluorescence_files: str, min_spectra: float, max_spectra: float, output_name: str, basedir: str, aliases: list, show_peaks: bool, normalize: bool, normalize_all: bool, denoise: bool):
+def process_files(solution: str, input_files: str, autofluorescence_files: str, min_spectra: float, 
+                  max_spectra: float, output_name: str, basedir: str, aliases: list, show_peaks: bool, normalize: bool, normalize_all: bool, denoise: bool):
     # Split the input files string into a list of file paths
     file_paths = input_files.split(',')
     file_paths = [x.strip() for x in file_paths if x.strip() != ""]
@@ -578,24 +579,27 @@ def process_files(solution: str, input_files: str, autofluorescence_files: str, 
             cumulative_height += 1.2 * max_deplacement  # Update cumulative height for next spectrum
     
     if solution in ["SERS_BWTeK", "SERS_Avantes","SERS_ReniShaw"]:
-        plt.xlabel("Raman Shift [cm-1]", fontsize = 30)
-        plt.ylabel("Normalized Intensity [a.u]", fontsize = 30)
+        plt.xlabel("Raman Shift [cm-1]", fontsize = 35)
+        plt.ylabel("Normalized intensity [a.u]", fontsize = 35)
         # plt.gca().set_yticklabels([])
     elif solution == "UV-Vis":
-        plt.xlabel("Wavelength [nm]", fontsize = 30)
-        plt.ylabel("Intensity [a.u]", fontsize = 30)
+        plt.xlabel("Wavelength [nm]", fontsize = 35)
+        plt.ylabel("Intensity [a.u]", fontsize = 35)
+        if normalize or normalize_all:
+            plt.ylabel("Normalized intensity [a.u]", fontsize = 35)
+
     elif solution == "FT-IR":
-        plt.xlabel("Wavenumber [cm-1]", fontsize = 30)
-        plt.ylabel("Transmittance [a.u]", fontsize = 30)
+        plt.xlabel("Wavenumber [cm-1]", fontsize = 35)
+        plt.ylabel("Transmittance [a.u]", fontsize = 35)
         plt.yticks([])
     else:
-        plt.xlabel("Wavelength [nm]", fontsize = 30)
-        plt.ylabel("Intensity [a.u]", fontsize = 30)
-    plt.xticks(fontsize=26)
-    plt.yticks(fontsize=26)
+        plt.xlabel("Wavelength [nm]", fontsize = 35)
+        plt.ylabel("Intensity [a.u]", fontsize = 35)
+    plt.xticks(fontsize=30)
+    plt.yticks(fontsize=30)
     # plt.tight_layout()
     plt.tick_params(axis='both', direction='in')
-    leg = plt.legend(fontsize=26, loc='upper right', frameon=True, framealpha=0.5, edgecolor="black")
+    leg = plt.legend(fontsize=28, loc='upper right', frameon=True, framealpha=0.5, edgecolor="black")
     for l in leg.get_lines():
         l.set_linewidth(2.5)
 
